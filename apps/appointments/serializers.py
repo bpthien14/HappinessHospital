@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.utils import timezone
+from django.db import models
 from datetime import date, datetime, timedelta
 
 from .models import (
@@ -35,14 +36,14 @@ class DoctorProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = DoctorProfile
         fields = [
-            'user', 'doctor_name', 'email', 'phone',
+            'id', 'user', 'doctor_name', 'email', 'phone',
             'department', 'department_name', 'department_code',
             'license_number', 'degree', 'specialization', 'experience_years',
             'max_patients_per_day', 'consultation_duration',
             'bio', 'achievements', 'is_active',
             'created_at', 'updated_at'
         ]
-        read_only_fields = ['created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
 
 class DoctorScheduleSerializer(serializers.ModelSerializer):
     doctor_name = serializers.CharField(source='doctor.user.full_name', read_only=True)
@@ -106,8 +107,8 @@ class AppointmentSerializer(serializers.ModelSerializer):
         ]
 
 class AppointmentCreateSerializer(serializers.ModelSerializer):
-    doctor = serializers.UUIDField(
-        help_text="ID của bác sĩ (UUID)"
+    doctor = serializers.CharField(
+        help_text="ID của bác sĩ (có thể là UUID hoặc integer)"
     )
     
     class Meta:

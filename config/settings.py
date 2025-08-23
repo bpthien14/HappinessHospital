@@ -35,6 +35,7 @@ LOCAL_APPS = [
     'apps.users',
     'apps.patients',
     'apps.appointments',
+    'apps.prescriptions',
     'frontend',
 ]
 
@@ -194,6 +195,9 @@ SPECTACULAR_SETTINGS = {
         {'name': 'appointments', 'description': 'Appointment scheduling and management'},
         {'name': 'departments', 'description': 'Hospital departments and specialties'},
         {'name': 'doctors', 'description': 'Doctor profiles and schedules'},
+        {'name': 'prescriptions', 'description': 'Prescription and drug management'},
+        {'name': 'drugs', 'description': 'Drug catalog and inventory management'},
+        {'name': 'dispensing', 'description': 'Prescription dispensing and pharmacy operations'},
     ],
 }
 
