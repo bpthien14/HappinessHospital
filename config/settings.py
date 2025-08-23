@@ -34,6 +34,7 @@ THIRD_PARTY_APPS = [
 LOCAL_APPS = [
     'apps.users',
     'apps.patients',
+    'apps.appointments',
     'frontend',
 ]
 
@@ -160,21 +161,39 @@ SPECTACULAR_SETTINGS = {
     'SERVE_INCLUDE_SCHEMA': False,
     'COMPONENT_SPLIT_REQUEST': True,
     'SCHEMA_PATH_PREFIX': '/api/',
+    'SORT_OPERATIONS': False,
+    'ENABLE_DUPLICATE_OPERATIONS': False,
     'SWAGGER_UI_SETTINGS': {
         'deepLinking': True,
         'persistAuthorization': True,
         'displayOperationId': True,
+        'tryItOutEnabled': True,
+        'requestInterceptor': 'function(request) { console.log("Request:", request); return request; }',
+        'responseInterceptor': 'function(response) { console.log("Response:", response); return response; }',
+        'defaultModelsExpandDepth': 2,
+        'defaultModelExpandDepth': 2,
     },
     'SECURITY': [
         {
             'Bearer': []
         }
     ],
+    'SECURITY_DEFINITIONS': {
+        'Bearer': {
+            'type': 'http',
+            'scheme': 'bearer',
+            'bearerFormat': 'JWT',
+        }
+    },
     'TAGS': [
         {'name': 'auth', 'description': 'Authentication endpoints'},
         {'name': 'users', 'description': 'User management'},
         {'name': 'roles', 'description': 'Role management'},
         {'name': 'permissions', 'description': 'Permission system'},
+        {'name': 'patients', 'description': 'Patient management'},
+        {'name': 'appointments', 'description': 'Appointment scheduling and management'},
+        {'name': 'departments', 'description': 'Hospital departments and specialties'},
+        {'name': 'doctors', 'description': 'Doctor profiles and schedules'},
     ],
 }
 
