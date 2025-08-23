@@ -4,10 +4,19 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 async function loadDashboardStats() {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+        showAlert('Vui lòng đăng nhập để tiếp tục', 'warning');
+        redirectToLogin();
+        return;
+    }
     try {
-        const response = await axios.get('/api/patients/statistics/');
-        const stats = response.data;
-        
+        const response = await axios.get(`/api/patients/statistics/`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
         document.getElementById('total-patients').textContent = stats.total_patients;
         document.getElementById('new-patients').textContent = stats.new_patients_this_month;
         // TODO: Load appointment and prescription stats when those modules are implemented
@@ -21,7 +30,18 @@ async function loadDashboardStats() {
 
 async function loadRecentPatients() {
     try {
-        const response = await axios.get('/api/patients/?page_size=5&ordering=-created_at');
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+            showAlert('Vui lòng đăng nhập để tiếp tục', 'warning');
+            redirectToLogin();
+            return;
+        }
+        const response = await axios.get('/api/patients/?page_size=5&ordering=-created_at', {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
         const patients = response.data.results;
         
         const tbody = document.getElementById('recent-patients-tbody');
