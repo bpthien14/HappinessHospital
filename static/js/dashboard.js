@@ -29,13 +29,13 @@ async function loadDashboardStats() {
 }
 
 async function loadRecentPatients() {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+        showAlert('Vui lòng đăng nhập để tiếp tục', 'warning');
+        redirectToLogin();
+        return;
+    }
     try {
-        const token = localStorage.getItem('access_token');
-        if (!token) {
-            showAlert('Vui lòng đăng nhập để tiếp tục', 'warning');
-            redirectToLogin();
-            return;
-        }
         const response = await axios.get('/api/patients/?page_size=5&ordering=-created_at', {
             headers: {
                 'Authorization': `Bearer ${token}`,
