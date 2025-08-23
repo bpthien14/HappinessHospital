@@ -2,6 +2,10 @@
 
 {% block title %}Đăng nhập - {{ block.super }}{% endblock %}
 
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+{% endblock %}
+
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-md-6 col-lg-4">
@@ -50,35 +54,60 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
     const username = document.getElementById('username').value;
     const password = document.getElementById('password').value;
     
-    try {
-        const response = await fetch('/api/auth/login/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-            },
-            body: JSON.stringify({
-                username: username,
-                password: password
-            })
+    // Disable form during submission
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang đăng nhập...';
+    
+    try {        
+        const response = await axios.post('/api/auth/login/', {
+            username: username,
+            password: password
         });
         
-        if (!response.ok) {
-            throw new Error('Đăng nhập thất bại');
-        }
+        const data = response.data;
         
-        const data = await response.json();
-        
-        // Store tokens
         localStorage.setItem('access_token', data.access);
         localStorage.setItem('refresh_token', data.refresh);
         localStorage.setItem('user_data', JSON.stringify(data.user));
-        
-        // Redirect to dashboard
-        window.location.href = '/dashboard/';
+
+        window.location.replace('/dashboard/');
         
     } catch (error) {
-        alert('Đăng nhập thất bại: ' + error.message);
+        console.error('❌ Login failed:', error);
+        
+        let errorMessage = 'Đăng nhập thất bại';
+        if (error.response?.data?.detail) {
+            errorMessage = error.response.data.detail;
+        } else if (error.response?.status === 400) {
+            errorMessage = 'Tên đăng nhập hoặc mật khẩu không đúng';
+        } else if (error.response?.status === 500) {
+            errorMessage = 'Lỗi server, vui lòng thử lại sau';
+        }
+        
+        // Show error message
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+        alertDiv.innerHTML = `
+            ${errorMessage}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        const form = document.getElementById('login-form');
+        form.insertBefore(alertDiv, form.firstChild);
+        
+        // Auto-dismiss after 5 seconds
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                alertDiv.remove();
+            }
+        }, 5000);
+        
+    } finally {
+        // Re-enable form
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
     }
 });
 </script>

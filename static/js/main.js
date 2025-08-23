@@ -1,7 +1,10 @@
 // API Configuration
 const API_BASE_URL = '/api';
+
+// Global variables
 let currentUser = null;
 let interceptorsReady = false;
+let isAuthenticated = false;
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', function() {
@@ -11,38 +14,67 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Authentication setup
 function initializeAuth() {
-    const token = localStorage.getItem('access_token');
-    const userData = localStorage.getItem('user_data');
+    if (window.location.pathname === '/login/') {
+        return;
+    }
     
-    if (token && userData) {
-        currentUser = JSON.parse(userData);
-        setupAxiosInterceptors();
-        updateUserInfo();
-        // Thông báo rằng interceptors đã sẵn sàng
-        interceptorsReady = true;
-        window.dispatchEvent(new CustomEvent('axiosInterceptorsReady'));
-    } else if (window.location.pathname !== '/login/') {
+    if (checkAuthStatus()) {
+        setupApp();
+    } else {
         redirectToLogin();
     }
 }
 
+function checkAuthStatus() {
+    const token = localStorage.getItem('access_token');
+    const userData = localStorage.getItem('user_data');
+
+    if (!token || !userData) {
+        return false;
+    }
+    
+    try {
+        if (token.split('.').length !== 3) {
+            return false;
+        }
+        
+        const parsedUserData = JSON.parse(userData);
+        if (!parsedUserData.username) {
+            return false;
+        }
+        
+        currentUser = parsedUserData;
+        isAuthenticated = true;
+        return true;
+        
+    } catch (error) {
+        console.error('❌ Error checking auth status:', error);
+        return false;
+    }
+}
+
+function setupApp() {
+    setupAxiosInterceptors();
+    updateUserInfo();
+    
+    interceptorsReady = true;
+    window.dispatchEvent(new CustomEvent('axiosInterceptorsReady'));
+}
+
 function setupAxiosInterceptors() {
+    
     // Request interceptor
     axios.interceptors.request.use(
         config => {
             const token = localStorage.getItem('access_token');
             if (token) {
                 config.headers.Authorization = `Bearer ${token}`;
-                console.log('🔐 JWT Token added to request:', config.url, 'Token:', token.substring(0, 20) + '...');
-            } else {
-                console.log('⚠️ No JWT token found for request:', config.url);
-            }
+            } 
             return config;
         },
         error => Promise.reject(error)
     );
 
-    // Response interceptor for token refresh
     axios.interceptors.response.use(
         response => response,
         async error => {
@@ -50,19 +82,21 @@ function setupAxiosInterceptors() {
             
             if (error.response?.status === 401 && !original._retry) {
                 original._retry = true;
-                console.log('🔄 Token expired, attempting refresh...');
                 
                 try {
                     const refreshToken = localStorage.getItem('refresh_token');
+                    if (!refreshToken) {
+                        logout();
+                        return Promise.reject(error);
+                    }
+                    
                     const response = await axios.post('/api/auth/refresh/', {
                         refresh: refreshToken
                     });
                     
                     localStorage.setItem('access_token', response.data.access);
-                    console.log('✅ Token refreshed successfully');
                     return axios(original);
                 } catch (refreshError) {
-                    console.log('❌ Token refresh failed, logging out');
                     logout();
                     return Promise.reject(refreshError);
                 }
@@ -71,8 +105,6 @@ function setupAxiosInterceptors() {
             return Promise.reject(error);
         }
     );
-    
-    console.log('✅ Axios interceptors setup completed');
 }
 
 function updateUserInfo() {
@@ -83,32 +115,37 @@ function updateUserInfo() {
 }
 
 function setupGlobalEventListeners() {
-    // Logout handler
     const logoutBtn = document.getElementById('logout-btn');
     if (logoutBtn) {
         logoutBtn.addEventListener('click', logout);
     }
 }
 
-async function logout() {
+async function logout() {    
     try {
         const refreshToken = localStorage.getItem('refresh_token');
-        await axios.post('/api/auth/logout/', { refresh: refreshToken });
+        if (refreshToken) {
+            await axios.post('/api/auth/logout/', { refresh: refreshToken });
+        }
     } catch (error) {
-        console.error('Logout error:', error);
+        console.error('❌ Logout API error:', error);
     } finally {
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
         localStorage.removeItem('user_data');
-        redirectToLogin();
+        
+        currentUser = null;
+        interceptorsReady = false;
+        isAuthenticated = false;
+
+        window.location.replace('/login/');
     }
 }
 
 function redirectToLogin() {
-    window.location.href = '/login/';
+    window.location.replace('/login/');
 }
 
-// Utility functions
 function showAlert(message, type = 'success') {
     const alertDiv = document.createElement('div');
     alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
@@ -116,16 +153,35 @@ function showAlert(message, type = 'success') {
         ${message}
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     `;
+
+    const container = document.querySelector('.container-fluid') || 
+                     document.querySelector('.container') || 
+                     document.querySelector('main') ||
+                     document.body;
     
-    const container = document.querySelector('main .container-fluid');
-    container.insertBefore(alertDiv, container.firstChild);
-    
-    // Auto-dismiss after 5 seconds
-    setTimeout(() => {
-        if (alertDiv.parentNode) {
-            alertDiv.remove();
+    if (container) {
+        try {
+            if (container === document.body) {
+                container.appendChild(alertDiv);
+            } else {
+                container.insertBefore(alertDiv, container.firstChild);
+            }
+            
+            // Auto-dismiss after 5 seconds
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.remove();
+                }
+            }, 5000);
+        } catch (error) {
+            console.error('Error inserting alert:', error);
+            // Fallback: append vào body
+            document.body.appendChild(alertDiv);
         }
-    }, 5000);
+    } else {
+        console.warn('No container found for alert, appending to body');
+        document.body.appendChild(alertDiv);
+    }
 }
 
 function formatDate(dateString) {
@@ -149,6 +205,7 @@ function calculateAge(birthDate) {
 // Export để các script khác có thể sử dụng
 window.HospitalApp = {
     interceptorsReady,
+    isAuthenticated,
     checkAuth: () => {
         const token = localStorage.getItem('access_token');
         return !!token;

@@ -21,8 +21,6 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function initializePatients() {
-    console.log('🚀 Initializing patients page...');
-    // Kiểm tra authentication trước khi load dữ liệu
     if (checkAuth()) {
         loadPatients();
         setupEventListeners();
@@ -212,7 +210,6 @@ function editPatient(patientId) {
 }
 
 function viewMedicalRecords(patientId) {
-    // Implement view medical records
     console.log('View medical records:', patientId);
 }
 
