@@ -14,6 +14,7 @@
                 </div>
 
                 <form id="login-form">
+                    {% csrf_token %}
                     <div class="mb-3">
                         <label for="username" class="form-label">Tên đăng nhập</label>
                         <input type="text" class="form-control" id="username" name="username" required>
@@ -50,21 +51,34 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
     const password = document.getElementById('password').value;
     
     try {
-        const response = await axios.post('/api/auth/login/', {
-            username: username,
-            password: password
+        const response = await fetch('/api/auth/login/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({
+                username: username,
+                password: password
+            })
         });
         
+        if (!response.ok) {
+            throw new Error('Đăng nhập thất bại');
+        }
+        
+        const data = await response.json();
+        
         // Store tokens
-        localStorage.setItem('access_token', response.data.access);
-        localStorage.setItem('refresh_token', response.data.refresh);
-        localStorage.setItem('user_data', JSON.stringify(response.data.user));
+        localStorage.setItem('access_token', data.access);
+        localStorage.setItem('refresh_token', data.refresh);
+        localStorage.setItem('user_data', JSON.stringify(data.user));
         
         // Redirect to dashboard
         window.location.href = '/dashboard/';
         
     } catch (error) {
-        alert('Đăng nhập thất bại: ' + (error.response?.data?.detail || 'Lỗi không xác định'));
+        alert('Đăng nhập thất bại: ' + error.message);
     }
 });
 </script>

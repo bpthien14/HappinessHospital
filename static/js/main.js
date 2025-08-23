@@ -1,6 +1,7 @@
 // API Configuration
 const API_BASE_URL = '/api';
 let currentUser = null;
+let interceptorsReady = false;
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', function() {
@@ -17,6 +18,9 @@ function initializeAuth() {
         currentUser = JSON.parse(userData);
         setupAxiosInterceptors();
         updateUserInfo();
+        // Thông báo rằng interceptors đã sẵn sàng
+        interceptorsReady = true;
+        window.dispatchEvent(new CustomEvent('axiosInterceptorsReady'));
     } else if (window.location.pathname !== '/login/') {
         redirectToLogin();
     }
@@ -29,6 +33,9 @@ function setupAxiosInterceptors() {
             const token = localStorage.getItem('access_token');
             if (token) {
                 config.headers.Authorization = `Bearer ${token}`;
+                console.log('🔐 JWT Token added to request:', config.url, 'Token:', token.substring(0, 20) + '...');
+            } else {
+                console.log('⚠️ No JWT token found for request:', config.url);
             }
             return config;
         },
@@ -43,6 +50,7 @@ function setupAxiosInterceptors() {
             
             if (error.response?.status === 401 && !original._retry) {
                 original._retry = true;
+                console.log('🔄 Token expired, attempting refresh...');
                 
                 try {
                     const refreshToken = localStorage.getItem('refresh_token');
@@ -51,8 +59,10 @@ function setupAxiosInterceptors() {
                     });
                     
                     localStorage.setItem('access_token', response.data.access);
+                    console.log('✅ Token refreshed successfully');
                     return axios(original);
                 } catch (refreshError) {
+                    console.log('❌ Token refresh failed, logging out');
                     logout();
                     return Promise.reject(refreshError);
                 }
@@ -61,6 +71,8 @@ function setupAxiosInterceptors() {
             return Promise.reject(error);
         }
     );
+    
+    console.log('✅ Axios interceptors setup completed');
 }
 
 function updateUserInfo() {
@@ -133,3 +145,15 @@ function calculateAge(birthDate) {
     
     return age;
 }
+
+// Export để các script khác có thể sử dụng
+window.HospitalApp = {
+    interceptorsReady,
+    checkAuth: () => {
+        const token = localStorage.getItem('access_token');
+        return !!token;
+    },
+    getToken: () => localStorage.getItem('access_token'),
+    logout,
+    showAlert
+};

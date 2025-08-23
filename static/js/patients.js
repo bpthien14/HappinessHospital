@@ -2,12 +2,32 @@ let currentPage = 1;
 let totalPages = 1;
 
 document.addEventListener('DOMContentLoaded', function() {
+    // Đợi axios interceptors sẵn sàng
+    if (window.HospitalApp && window.HospitalApp.interceptorsReady) {
+        initializePatients();
+    } else {
+        // Đợi event từ main.js
+        window.addEventListener('axiosInterceptorsReady', initializePatients);
+        // Fallback: đợi tối đa 2 giây
+        setTimeout(() => {
+            if (window.HospitalApp && window.HospitalApp.interceptorsReady) {
+                initializePatients();
+            } else {
+                console.error('❌ Axios interceptors not ready after timeout');
+                showAlert('Lỗi khởi tạo hệ thống', 'danger');
+            }
+        }, 2000);
+    }
+});
+
+function initializePatients() {
+    console.log('🚀 Initializing patients page...');
     // Kiểm tra authentication trước khi load dữ liệu
     if (checkAuth()) {
         loadPatients();
         setupEventListeners();
     }
-});
+}
 
 function setupEventListeners() {
     // Search form
@@ -50,11 +70,7 @@ async function loadPatients() {
         if (genderFilter) params.append('gender', genderFilter);
         if (insuranceFilter) params.append('has_insurance', insuranceFilter);
         
-        const response = await axios.get(`/api/patients/?${params}`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
+        const response = await axios.get(`/api/patients/?${params}`);
         displayPatients(response.data.results);
         updatePagination(response.data);
         
@@ -155,7 +171,6 @@ async function handleAddPatient(e) {
     try {
         await axios.post('/api/patients/', patientData, {
             headers: {
-                'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
             }
         });
@@ -215,4 +230,34 @@ function checkAuth() {
 // Helper function để redirect đến login
 function redirectToLogin() {
     window.location.href = '/login/';
+}
+
+// Helper function để hiển thị alert
+function showAlert(message, type = 'info') {
+    // Sử dụng HospitalApp.showAlert nếu có
+    if (window.HospitalApp && window.HospitalApp.showAlert) {
+        window.HospitalApp.showAlert(message, type);
+        return;
+    }
+    
+    // Fallback: tạo alert element
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    // Thêm vào đầu trang
+    const container = document.querySelector('.container-fluid') || document.querySelector('.container');
+    if (container) {
+        container.insertBefore(alertDiv, container.firstChild);
+        
+        // Tự động ẩn sau 5 giây
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                alertDiv.remove();
+            }
+        }, 5000);
+    }
 }
