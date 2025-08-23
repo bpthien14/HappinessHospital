@@ -1,0 +1,71 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Đăng nhập - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-4">
+        <div class="card shadow">
+            <div class="card-body p-5">
+                <div class="text-center mb-4">
+                    <i class="fas fa-hospital fa-3x text-primary"></i>
+                    <h3 class="mt-3">Đăng nhập hệ thống</h3>
+                    <p class="text-muted">Bệnh viện ABC</p>
+                </div>
+
+                <form id="login-form">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Tên đăng nhập</label>
+                        <input type="text" class="form-control" id="username" name="username" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Mật khẩu</label>
+                        <input type="password" class="form-control" id="password" name="password" required>
+                    </div>
+                    
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="remember">
+                        <label class="form-check-label" for="remember">Ghi nhớ đăng nhập</label>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-sign-in-alt"></i> Đăng nhập
+                    </button>
+                </form>
+                
+                <div class="text-center mt-3">
+                    <a href="#" class="text-muted">Quên mật khẩu?</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    
+    try {
+        const response = await axios.post('/api/auth/login/', {
+            username: username,
+            password: password
+        });
+        
+        // Store tokens
+        localStorage.setItem('access_token', response.data.access);
+        localStorage.setItem('refresh_token', response.data.refresh);
+        localStorage.setItem('user_data', JSON.stringify(response.data.user));
+        
+        // Redirect to dashboard
+        window.location.href = '/dashboard/';
+        
+    } catch (error) {
+        alert('Đăng nhập thất bại: ' + (error.response?.data?.detail || 'Lỗi không xác định'));
+    }
+});
+</script>
+{% endblock %}

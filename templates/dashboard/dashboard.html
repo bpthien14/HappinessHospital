@@ -1,0 +1,155 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Dashboard - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2><i class="fas fa-tachometer-alt"></i> Dashboard</h2>
+        <p class="text-muted">Tổng quan hệ thống quản lý bệnh viện</p>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row mb-4" id="stats-cards">
+    <div class="col-md-3 mb-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-users fa-2x me-3"></i>
+                    <div>
+                        <h5 class="card-title mb-0" id="total-patients">-</h5>
+                        <p class="card-text">Tổng bệnh nhân</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-user-plus fa-2x me-3"></i>
+                    <div>
+                        <h5 class="card-title mb-0" id="new-patients">-</h5>
+                        <p class="card-text">BN mới tháng này</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-calendar-alt fa-2x me-3"></i>
+                    <div>
+                        <h5 class="card-title mb-0" id="today-appointments">-</h5>
+                        <p class="card-text">Lịch khám hôm nay</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-prescription-bottle fa-2x me-3"></i>
+                    <div>
+                        <h5 class="card-title mb-0" id="pending-prescriptions">-</h5>
+                        <p class="card-text">Đơn thuốc chờ</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Thao tác nhanh</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <a href="/patients/" class="btn btn-outline-primary w-100 h-100">
+                            <i class="fas fa-users fa-2x d-block mb-2"></i>
+                            Quản lý bệnh nhân
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <button class="btn btn-outline-success w-100 h-100" onclick="openAddPatientModal()">
+                            <i class="fas fa-user-plus fa-2x d-block mb-2"></i>
+                            Thêm bệnh nhân mới
+                        </button>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a href="#" class="btn btn-outline-info w-100 h-100">
+                            <i class="fas fa-calendar-plus fa-2x d-block mb-2"></i>
+                            Đặt lịch khám
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a href="#" class="btn btn-outline-warning w-100 h-100">
+                            <i class="fas fa-chart-bar fa-2x d-block mb-2"></i>
+                            Báo cáo thống kê
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Patients -->
+<div class="row">
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Bệnh nhân mới gần đây</h5>
+                <a href="/patients/" class="btn btn-sm btn-outline-primary">Xem tất cả</a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Mã BN</th>
+                                <th>Họ tên</th>
+                                <th>Ngày tạo</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recent-patients-tbody">
+                            <tr>
+                                <td colspan="3" class="text-center text-muted">Đang tải...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Hoạt động gần đây</h5>
+            </div>
+            <div class="card-body">
+                <div class="timeline" id="recent-activities">
+                    <div class="text-center text-muted">Đang tải...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="{% load static %}{% static 'js/dashboard.js' %}"></script>
+{% endblock %}
