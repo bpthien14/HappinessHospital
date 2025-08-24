@@ -5,12 +5,23 @@ const API_BASE_URL = '/api';
 let currentUser = null;
 let interceptorsReady = false;
 let isAuthenticated = false;
+let appInitialized = false;
 
-// Initialize app
-document.addEventListener('DOMContentLoaded', function() {
+function bootApplication() {
+    if (appInitialized) {
+        return;
+    }
+    appInitialized = true;
     initializeAuth();
     setupGlobalEventListeners();
-});
+}
+
+// Khởi tạo ngay cả khi DOMContentLoaded đã xảy ra trước đó
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootApplication);
+} else {
+    bootApplication();
+}
 
 // Authentication setup
 function initializeAuth() {
@@ -204,8 +215,19 @@ function calculateAge(birthDate) {
 
 // Export để các script khác có thể sử dụng
 window.HospitalApp = {
-    interceptorsReady,
-    isAuthenticated,
+    // Trạng thái interceptor hiện tại
+    get interceptorsReady() { return interceptorsReady; },
+    get isAuthenticated() { return isAuthenticated; },
+    // Đăng ký callback khi axios sẵn sàng
+    onAxiosReady: (cb) => {
+        if (interceptorsReady) {
+            try { cb(); } catch (e) { console.error(e); }
+        } else {
+            window.addEventListener('axiosInterceptorsReady', () => {
+                try { cb(); } catch (e) { console.error(e); }
+            }, { once: true });
+        }
+    },
     checkAuth: () => {
         const token = localStorage.getItem('access_token');
         return !!token;

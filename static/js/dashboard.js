@@ -46,6 +46,9 @@ async function loadDashboardStats() {
         console.error('❌ Error loading dashboard stats:', error);
         if (error.response?.status === 401) {
             redirectToLogin();
+        } else if (error.code === 'ERR_NETWORK') {
+            showAlert('Mất kết nối tạm thời. Đang thử lại...', 'warning');
+            setTimeout(loadDashboardStats, 1000);
         } else {
             showAlert('Lỗi khi tải thống kê dashboard', 'danger');
         }
@@ -80,6 +83,9 @@ async function loadRecentPatients() {
         console.error('❌ Error loading recent patients:', error);
         if (error.response?.status === 401) {
             redirectToLogin();
+        } else if (error.code === 'ERR_NETWORK') {
+            showAlert('Mất kết nối tạm thời. Đang thử lại...', 'warning');
+            setTimeout(loadRecentPatients, 1000);
         } else {
             document.getElementById('recent-patients-tbody').innerHTML =
                 '<tr><td colspan="3" class="text-center text-danger">Lỗi khi tải dữ liệu</td></tr>';

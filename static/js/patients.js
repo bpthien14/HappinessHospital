@@ -77,6 +77,9 @@ async function loadPatients() {
         if (error.response?.status === 401) {
             showAlert('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại', 'warning');
             redirectToLogin();
+        } else if (error.code === 'ERR_NETWORK') {
+            showAlert('Mất kết nối tạm thời. Đang thử lại...', 'warning');
+            setTimeout(loadPatients, 1000);
         } else {
             showAlert('Lỗi khi tải danh sách bệnh nhân', 'danger');
         }
