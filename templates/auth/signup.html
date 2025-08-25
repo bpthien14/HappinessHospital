@@ -1,0 +1,188 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Đăng ký - {{ block.super }}{% endblock %}
+
+{% block content %}
+<script>window.__PUBLIC_PAGE__ = true;</script>
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card shadow">
+            <div class="card-body p-5">
+                <div class="text-center mb-4">
+                    <i class="fas fa-user-plus fa-3x text-primary"></i>
+                    <h3 class="mt-3">Tạo tài khoản</h3>
+                </div>
+
+                <form id="signup-form">
+                    {% csrf_token %}
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="username" class="form-label">Tên đăng nhập</label>
+                            <input type="text" class="form-control" id="username" name="username" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="email" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="email" name="email" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="first_name" class="form-label">Họ</label>
+                            <input type="text" class="form-control" id="first_name" name="first_name">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="last_name" class="form-label">Tên</label>
+                            <input type="text" class="form-control" id="last_name" name="last_name">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="password" class="form-label">Mật khẩu</label>
+                            <div class="position-relative">
+                                <input type="password" class="form-control pe-5" id="password" name="password" required>
+                                <button class="btn bg-transparent border-0 shadow-none text-secondary d-none position-absolute top-50 end-0 translate-middle-y px-2" type="button" id="toggle-password" aria-label="Hiện mật khẩu">
+                                    <i class="far fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="password_confirm" class="form-label">Xác nhận mật khẩu</label>
+                            <div class="position-relative">
+                                <input type="password" class="form-control pe-5" id="password_confirm" name="password_confirm" required>
+                                <button class="btn bg-transparent border-0 shadow-none text-secondary d-none position-absolute top-50 end-0 translate-middle-y px-2" type="button" id="toggle-password-confirm" aria-label="Hiện mật khẩu">
+                                    <i class="far fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="phone_number" class="form-label">Số điện thoại</label>
+                            <input type="text" class="form-control" id="phone_number" name="phone_number">
+                        </div>
+                        <!-- User type fixed to PATIENT by backend; hide selector for simplicity -->
+                        <div class="col-12">
+                            <label for="address" class="form-label">Địa chỉ</label>
+                            <textarea class="form-control" id="address" name="address" rows="2"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-user-plus"></i> Đăng ký
+                        </button>
+                    </div>
+                </form>
+
+                <div class="text-center mt-3">
+                    <a href="{% url 'login' %}" class="text-muted">Đã có tài khoản? Đăng nhập</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('signup-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang tạo tài khoản...';
+
+    const payload = {
+        username: document.getElementById('username').value,
+        email: document.getElementById('email').value,
+        first_name: document.getElementById('first_name').value,
+        last_name: document.getElementById('last_name').value,
+        password: document.getElementById('password').value,
+        password_confirm: document.getElementById('password_confirm').value,
+        phone_number: document.getElementById('phone_number').value,
+        user_type: 'PATIENT',
+        address: document.getElementById('address').value,
+    };
+
+    try {
+        const response = await axios.post('/api/auth/register/', payload);
+        const data = response.data;
+        // Lưu token và chuyển hướng
+        if (data.access && data.refresh) {
+            localStorage.setItem('access_token', data.access);
+            localStorage.setItem('refresh_token', data.refresh);
+        }
+        if (data.user) {
+            localStorage.setItem('user_data', JSON.stringify(data.user));
+        }
+        window.location.replace('/dashboard/');
+    } catch (error) {
+        let message = 'Đăng ký thất bại';
+        if (error.response?.data) {
+            const errs = error.response.data;
+            if (typeof errs === 'object') {
+                message = Object.entries(errs)
+                  .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`)
+                  .join('<br>');
+            } else if (typeof errs === 'string') {
+                message = errs;
+            }
+        }
+        // Popup góc phải
+        const toast = document.createElement('div');
+        toast.className = 'position-fixed top-0 end-0 p-3';
+        toast.style.zIndex = 1080;
+        toast.innerHTML = `
+            <div class="toast align-items-center text-bg-danger border-0 show" role="alert">
+                <div class="d-flex">
+                    <div class="toast-body">${message}</div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                </div>
+            </div>`;
+        document.body.appendChild(toast);
+        setTimeout(() => { try { toast.remove(); } catch(e){} }, 6000);
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+    }
+});
+
+document.getElementById('toggle-password').addEventListener('click', function() {
+    const input = document.getElementById('password');
+    const icon = this.querySelector('i');
+    const isHidden = input.type === 'password';
+    input.type = isHidden ? 'text' : 'password';
+    icon.classList.toggle('fa-eye');
+    icon.classList.toggle('fa-eye-slash');
+    this.setAttribute('aria-label', isHidden ? 'Ẩn mật khẩu' : 'Hiện mật khẩu');
+});
+
+document.getElementById('toggle-password-confirm').addEventListener('click', function() {
+    const input = document.getElementById('password_confirm');
+    const icon = this.querySelector('i');
+    const isHidden = input.type === 'password';
+    input.type = isHidden ? 'text' : 'password';
+    icon.classList.toggle('fa-eye');
+    icon.classList.toggle('fa-eye-slash');
+    this.setAttribute('aria-label', isHidden ? 'Ẩn mật khẩu' : 'Hiện mật khẩu');
+});
+
+// Only show toggle buttons when inputs have value
+(function() {
+    const pwdInput = document.getElementById('password');
+    const pwdToggle = document.getElementById('toggle-password');
+    const repInput = document.getElementById('password_confirm');
+    const repToggle = document.getElementById('toggle-password-confirm');
+    const update = () => {
+        if (pwdInput.value && pwdInput.value.length > 0) {
+            pwdToggle.classList.remove('d-none');
+        } else {
+            pwdToggle.classList.add('d-none');
+        }
+        if (repInput.value && repInput.value.length > 0) {
+            repToggle.classList.remove('d-none');
+        } else {
+            repToggle.classList.add('d-none');
+        }
+    };
+    pwdInput.addEventListener('input', update);
+    repInput.addEventListener('input', update);
+    update();
+})();
+</script>
+{% endblock %}
+
+

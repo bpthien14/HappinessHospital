@@ -6,6 +6,13 @@ from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Q
 from datetime import date, timedelta
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse
+from django.http import JsonResponse
+from typing import Any, List
+import json as _stdlib_json
+try:
+    from vietnam_provinces import NESTED_DIVISIONS_JSON_PATH as VN_PROVINCES_PATH  # type: ignore
+except Exception:
+    VN_PROVINCES_PATH = None
 
 from .models import Patient, MedicalRecord, PatientDocument
 from .serializers import (
@@ -250,6 +257,69 @@ class PatientDocumentViewSet(ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(uploaded_by=self.request.user)
 
+########################
+# Geo APIs for Swagger #
+########################
+
+def _load_nested_divisions() -> List[dict]:
+    if not hasattr(_load_nested_divisions, "_cache"):
+        global VN_PROVINCES_PATH
+        if VN_PROVINCES_PATH is None:
+            try:
+                from importlib import import_module
+                VN_PROVINCES_PATH = import_module('vietnam_provinces').NESTED_DIVISIONS_JSON_PATH  # type: ignore
+            except Exception:
+                raise RuntimeError("vietnam-provinces chưa được cài đặt")
+        try:
+            import orjson as _orjson  # type: ignore
+            _load_nested_divisions._cache = _orjson.loads(VN_PROVINCES_PATH.read_bytes())
+        except Exception:
+            try:
+                import rapidjson as _rapidjson  # type: ignore
+                with VN_PROVINCES_PATH.open(encoding='utf-8') as f:
+                    _load_nested_divisions._cache = _rapidjson.load(f)
+            except Exception:
+                _load_nested_divisions._cache = _stdlib_json.loads(
+                    VN_PROVINCES_PATH.read_text(encoding='utf-8')
+                )
+    return _load_nested_divisions._cache  # type: ignore
+
+
+@extend_schema(tags=['geo'], summary='Danh sách Tỉnh/Thành phố')
+@api_view(['GET'])
+def geo_provinces(request):
+    try:
+        data = _load_nested_divisions()
+    except Exception as exc:
+        return Response({'detail': str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    provinces = [
+        {
+            'code': p['code'],
+            'name': p['name'],
+            'division_type': p.get('division_type'),
+        } for p in data
+    ]
+    return Response(provinces)
+
+
+@extend_schema(tags=['geo'], summary='Danh sách Phường/Xã theo Tỉnh/TP')
+@api_view(['GET'])
+def geo_province_detail(request, province_code: int):
+    try:
+        data = _load_nested_divisions()
+    except Exception as exc:
+        return Response({'detail': str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    for p in data:
+        if int(p['code']) == int(province_code):
+            wards = p.get('wards', []) or p.get('districts', [])
+            return Response({
+                'code': p['code'],
+                'name': p['name'],
+                'wards': [
+                    {'code': w['code'], 'name': w['name']} for w in wards
+                ]
+            })
+    return Response({'detail': 'Province not found'}, status=status.HTTP_404_NOT_FOUND)
 @extend_schema(
     summary="Validate BHYT Insurance",
     description="Validates insurance card with BHXH system and returns patient info",
