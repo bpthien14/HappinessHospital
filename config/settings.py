@@ -2,6 +2,10 @@ import os
 from pathlib import Path
 from datetime import timedelta
 
+# Load environment variables from .env file
+from dotenv import load_dotenv
+load_dotenv()
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -36,6 +40,7 @@ LOCAL_APPS = [
     'apps.patients',
     'apps.appointments',
     'apps.prescriptions',
+    'apps.payments',
     'frontend',
 ]
 
@@ -198,6 +203,7 @@ SPECTACULAR_SETTINGS = {
         {'name': 'prescriptions', 'description': 'Prescription and drug management'},
         {'name': 'drugs', 'description': 'Drug catalog and inventory management'},
         {'name': 'dispensing', 'description': 'Prescription dispensing and pharmacy operations'},
+        {'name': 'payments', 'description': 'Prescription payments (MoMo, cash)'},
     ],
 }
 
@@ -269,3 +275,9 @@ LOGGING = {
         },
     },
 }
+
+# VNPAY Configuration
+VNPAY_TMN_CODE = os.getenv('VNPAY_TMN_CODE')
+VNPAY_HASH_SECRET = os.getenv('VNPAY_HASH_SECRET')
+VNPAY_RETURN_URL = os.getenv('VNPAY_RETURN_URL')
+VNPAY_IPN_URL = os.getenv('VNPAY_IPN_URL')

@@ -386,6 +386,22 @@ class PrescriptionDispenseViewSet(ModelViewSet):
             return PrescriptionDispenseCreateSerializer
         return PrescriptionDispenseSerializer
 
+    def create(self, request, *args, **kwargs):
+        # Extra guard at view layer to ensure payment before dispensing
+        prescription_item_id = request.data.get('prescription_item')
+        if prescription_item_id:
+            try:
+                item = PrescriptionItem.objects.select_related('prescription').get(id=prescription_item_id)
+                from apps.payments.models import Payment
+                if not Payment.objects.filter(prescription=item.prescription, status='PAID').exists():
+                    return Response({'error': 'Đơn thuốc chưa được thanh toán. Vui lòng thanh toán trước khi cấp thuốc.'}, status=status.HTTP_400_BAD_REQUEST)
+            except PrescriptionItem.DoesNotExist:
+                pass
+            except Exception:
+                # If payments app not ready, fall back to serializer validation
+                pass
+        return super().create(request, *args, **kwargs)
+
 @extend_schema(
     tags=['prescriptions'],
     parameters=[

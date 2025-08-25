@@ -242,6 +242,16 @@ class PrescriptionDispenseCreateSerializer(serializers.ModelSerializer):
         prescription_item = attrs['prescription_item']
         quantity_dispensed = attrs['quantity_dispensed']
         
+        # Require payment before dispensing: patient must have at least one PAID payment
+        prescription = prescription_item.prescription
+        try:
+            from apps.payments.models import Payment
+            has_paid = Payment.objects.filter(prescription=prescription, status='PAID').exists()
+        except Exception:
+            has_paid = False
+        if not has_paid:
+            raise serializers.ValidationError("Đơn thuốc chưa được thanh toán. Vui lòng thanh toán trước khi cấp thuốc.")
+
         # Check if prescription is still valid
         if not prescription_item.prescription.is_valid:
             raise serializers.ValidationError("Đơn thuốc đã hết hạn hoặc không còn hiệu lực")

@@ -15,6 +15,7 @@ urlpatterns = [
     path('api/', include('apps.patients.urls')),
     path('api/', include('apps.appointments.urls')),
     path('api/', include('apps.prescriptions.urls')),
+    path('api/', include('apps.payments.urls')),
     
     # Frontend views
     path('', include('frontend.urls')),
