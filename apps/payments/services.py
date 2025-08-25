@@ -14,6 +14,7 @@ class VNPayService:
         self.vnp_TmnCode = getattr(settings, 'VNPAY_TMN_CODE', 'DEMOV210')
         self.vnp_HashSecret = getattr(settings, 'VNPAY_HASH_SECRET', 'your_secret_key_here')
         self.vnp_Url = "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html"
+        self.vnp_QR_Url = "https://sandbox.vnpayment.vn/paymentv2/qr"  # QR endpoint
         self.vnp_ReturnUrl = getattr(settings, 'VNPAY_RETURN_URL', 'http://localhost:8000/api/payments/vnpay_return/')
         self.vnp_IpnUrl = getattr(settings, 'VNPAY_IPN_URL', 'http://localhost:8000/api/payments/vnpay_ipn/')
     
@@ -61,6 +62,52 @@ class VNPayService:
         payment_url = f"{self.vnp_Url}?{urllib.parse.urlencode(vnp_Params)}"
         
         return payment_url, vnp_TxnRef
+    
+    def create_qr_code(self, payment, order_desc):
+        """Create VNPAY QR Code for mobile payment"""
+        
+        # Generate unique transaction reference
+        vnp_TxnRef = f"DT{timezone.now().strftime('%Y%m%d%H%M%S')}{payment.id}"
+        
+        # QR Code parameters
+        vnp_Params = {
+            'vnp_Version': '2.1.0',
+            'vnp_Command': 'pay',
+            'vnp_TmnCode': self.vnp_TmnCode,
+            'vnp_Amount': int(payment.amount * 100),
+            'vnp_CurrCode': 'VND',
+            'vnp_TxnRef': vnp_TxnRef,
+            'vnp_OrderInfo': order_desc,
+            'vnp_OrderType': 'other',
+            'vnp_Locale': 'vn',
+            'vnp_ReturnUrl': self.vnp_ReturnUrl,
+            'vnp_IpnUrl': self.vnp_IpnUrl,
+            'vnp_CreateDate': timezone.now().strftime('%Y%m%d%H%M%SS'),
+            'vnp_IpAddr': '127.0.0.1',
+            'vnp_QRCode': '1',  # Enable QR Code
+            'vnp_QRCodeType': '1',  # 1: VNPAY QR, 2: VietQR
+        }
+        
+        # Sort parameters alphabetically
+        vnp_Params = sorted(vnp_Params.items())
+        
+        # Create hash string
+        hash_data = "&".join([f"{k}={v}" for k, v in vnp_Params])
+        
+        # Generate secure hash
+        secureHash = hmac.new(
+            self.vnp_HashSecret.encode('utf-8'),
+            hash_data.encode('utf-8'),
+            hashlib.sha512
+        ).hexdigest()
+        
+        # Add secure hash to parameters
+        vnp_Params.append(('vnp_SecureHash', secureHash))
+        
+        # Create QR Code URL
+        qr_url = f"{self.vnp_QR_Url}?{urllib.parse.urlencode(vnp_Params)}"
+        
+        return qr_url, vnp_TxnRef
     
     def verify_response(self, response_data):
         """Verify VNPAY response signature"""

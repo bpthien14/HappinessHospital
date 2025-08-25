@@ -48,6 +48,10 @@ class Payment(models.Model):
     vnp_BankCode = models.CharField(max_length=20, blank=True, help_text="Mã ngân hàng thanh toán")
     vnp_PayDate = models.CharField(max_length=14, blank=True, help_text="Thời gian thanh toán VNPAY")
     vnp_SecureHash = models.CharField(max_length=256, blank=True, help_text="Chữ ký bảo mật VNPAY")
+    
+    # QR Code fields
+    qr_code_url = models.URLField(blank=True, help_text="URL mã QR code VNPAY")
+    qr_code_type = models.CharField(max_length=20, blank=True, help_text="Loại QR code (VNPAY_QR, VIET_QR)")
 
     # Audit
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='created_payments')
@@ -78,6 +82,12 @@ class Payment(models.Model):
             from .services import VNPayService
             vnpay_service = VNPayService()
             return vnpay_service.create_payment_url(self, self.vnp_OrderInfo)
+        return None
+
+    def get_qr_code_url(self):
+        """Generate QR code URL if method is VNPAY"""
+        if self.method == 'VNPAY' and self.qr_code_url:
+            return self.qr_code_url
         return None
 
 
