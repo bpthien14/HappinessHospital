@@ -111,6 +111,14 @@ function checkAuth() {
 
 
 function redirectToLogin() {
+    try {
+        const rawPath = window.location.pathname || '/';
+        const normalizedPath = (rawPath.endsWith('/') ? rawPath : rawPath + '/').toLowerCase();
+        const publicPaths = new Set(['/login/', '/signup/']);
+        if (publicPaths.has(normalizedPath)) {
+            return;
+        }
+    } catch (e) { /* noop */ }
     window.location.replace('/login/');
 }
 

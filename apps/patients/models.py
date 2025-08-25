@@ -36,7 +36,7 @@ class Patient(models.Model):
     # Contact Information
     phone_validator = RegexValidator(
         regex=r'^(\+84|0)[3|5|7|8|9](\d{8})$',
-        message="Số điện thoại phải theo định dạng Việt Nam (VD: 0987654321 hoặc +84987654321)"
+        message="Số điện thoại phải chuẩn định dạng Việt Nam và đủ 10 số"
     )
     phone_number = models.CharField(
         max_length=15, 
@@ -57,10 +57,10 @@ class Patient(models.Model):
         max_length=12,
         unique=True,
         validators=[RegexValidator(
-            regex=r'^\d{9}$|^\d{12}$',
-            message="CCCD phải có 9 hoặc 12 số"
+            regex=r'^\d{12}$',
+            message="CCCD phải có đúng 12 số"
         )],
-        help_text="Số CCCD/CMND"
+        help_text="Số CCCD"
     )
     
     # Medical Information

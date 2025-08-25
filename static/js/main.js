@@ -7,11 +7,36 @@ let interceptorsReady = false;
 let isAuthenticated = false;
 let appInitialized = false;
 
+function isPublicPath() {
+    try {
+        const url = new URL(window.location.href);
+        const normalizedPath = (url.pathname.endsWith('/') ? url.pathname : url.pathname + '/').toLowerCase();
+        if (normalizedPath === '/login/' || normalizedPath === '/signup/') {
+            return true;
+        }
+        // Cho phép biến thể có query next, ts...
+        if (normalizedPath.includes('/login/') || normalizedPath.includes('/signup/')) {
+            return true;
+        }
+        return false;
+    } catch (e) {
+        return false;
+    }
+}
+
 function bootApplication() {
     if (appInitialized) {
         return;
     }
     appInitialized = true;
+    // Nếu là trang công khai, chỉ cần cập nhật navbar và gắn sự kiện, không khởi chạy luồng auth
+    if (isPublicPath() || window.__PUBLIC_PAGE__ === true) {
+        try { toggleNavbarByAuth(); } catch (e) { /* noop */ }
+        setupGlobalEventListeners();
+        return;
+    }
+    // Cập nhật navbar ngay khi khởi động để phản ánh trạng thái hiện tại
+    try { toggleNavbarByAuth(); } catch (e) { /* noop */ }
     initializeAuth();
     setupGlobalEventListeners();
 }
@@ -25,7 +50,8 @@ if (document.readyState === 'loading') {
 
 // Authentication setup
 function initializeAuth() {
-    if (window.location.pathname === '/login/') {
+    if (window.__PUBLIC_PAGE__ === true || isPublicPath()) {
+        toggleNavbarByAuth();
         return;
     }
     
@@ -67,6 +93,7 @@ function checkAuthStatus() {
 function setupApp() {
     setupAxiosInterceptors();
     updateUserInfo();
+    toggleNavbarByAuth();
     
     interceptorsReady = true;
     window.dispatchEvent(new CustomEvent('axiosInterceptorsReady'));
@@ -130,6 +157,8 @@ function setupGlobalEventListeners() {
     if (logoutBtn) {
         logoutBtn.addEventListener('click', logout);
     }
+    // Toggle navbar visibility on load for non-protected pages as well
+    toggleNavbarByAuth();
 }
 
 async function logout() {    
@@ -148,13 +177,45 @@ async function logout() {
         currentUser = null;
         interceptorsReady = false;
         isAuthenticated = false;
+        toggleNavbarByAuth();
 
         window.location.replace('/login/');
     }
 }
 
 function redirectToLogin() {
+    try {
+        if (isPublicPath() || window.__PUBLIC_PAGE__ === true) {
+            // Đang ở trang công khai, không redirect nữa
+            return;
+        }
+    } catch (e) { /* noop */ }
     window.location.replace('/login/');
+}
+
+function toggleNavbarByAuth() {
+    try {
+        const hasToken = !!localStorage.getItem('access_token');
+        const authNav = document.getElementById('auth-nav');
+        const guestNav = document.getElementById('guest-nav');
+        if (authNav) {
+            authNav.style.display = hasToken ? 'flex' : 'none';
+        }
+        if (guestNav) {
+            guestNav.style.display = hasToken ? 'none' : 'flex';
+        }
+
+        // Ensure logout button handler is bound when auth menu becomes visible
+        if (hasToken) {
+            const logoutBtn = document.getElementById('logout-btn');
+            if (logoutBtn && !logoutBtn.__bound) {
+                logoutBtn.addEventListener('click', logout);
+                logoutBtn.__bound = true;
+            }
+        }
+    } catch (e) {
+        console.error('toggleNavbarByAuth error', e);
+    }
 }
 
 function showAlert(message, type = 'success') {

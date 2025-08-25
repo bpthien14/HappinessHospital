@@ -1,6 +1,9 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from .models import Patient, MedicalRecord, PatientDocument
+from datetime import date
+import re
+from rest_framework.validators import UniqueValidator
 
 User = get_user_model()
 
@@ -51,7 +54,22 @@ class PatientSerializer(serializers.ModelSerializer):
         return attrs
 
 class PatientCreateSerializer(serializers.ModelSerializer):
-    """Serializer for creating patients with required fields only"""
+    citizen_id = serializers.CharField(
+        validators=[
+            UniqueValidator(
+                queryset=Patient.objects.all(),
+                message="Bệnh nhân có CMND/CCCD đã tồn tại."
+            )
+        ]
+    )
+    phone_number = serializers.CharField(
+        validators=[
+            UniqueValidator(
+                queryset=Patient.objects.all(),
+                message="Số điện thoại đã tồn tại."
+            )
+        ]
+    )
     
     class Meta:
         model = Patient
@@ -79,6 +97,27 @@ class PatientCreateSerializer(serializers.ModelSerializer):
         }
     
     def validate(self, attrs):
+        # Normalize phone numbers: keep '+' and digits only
+        for phone_field in ['phone_number', 'emergency_contact_phone']:
+            phone_value = attrs.get(phone_field)
+            if phone_value:
+                normalized = re.sub(r'[^\d+]', '', str(phone_value))
+                attrs[phone_field] = normalized
+
+        # Normalize citizen_id: remove spaces
+        if attrs.get('citizen_id'):
+            attrs['citizen_id'] = str(attrs['citizen_id']).replace(' ', '')
+
+        # Validate age <= 100 and not in the future
+        dob = attrs.get('date_of_birth')
+        if dob:
+            today = date.today()
+            if dob > today:
+                raise serializers.ValidationError({'date_of_birth': 'Ngày sinh không được ở tương lai'})
+            age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+            if age > 100:
+                raise serializers.ValidationError({'date_of_birth': 'Tuổi không được vượt quá 100'})
+
         return PatientSerializer().validate(attrs)
 
 class PatientSearchSerializer(serializers.Serializer):

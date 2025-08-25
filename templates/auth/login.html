@@ -7,6 +7,7 @@
 {% endblock %}
 
 {% block content %}
+<script>window.__PUBLIC_PAGE__ = true;</script>
 <div class="row justify-content-center">
     <div class="col-md-6 col-lg-4">
         <div class="card shadow">
@@ -26,7 +27,12 @@
                     
                     <div class="mb-3">
                         <label for="password" class="form-label">Mật khẩu</label>
-                        <input type="password" class="form-control" id="password" name="password" required>
+                        <div class="position-relative">
+                            <input type="password" class="form-control pe-5" id="password" name="password" required>
+                            <button class="btn bg-transparent border-0 shadow-none text-secondary d-none position-absolute top-50 end-0 translate-middle-y px-2" type="button" id="toggle-password" aria-label="Hiện mật khẩu">
+                                <i class="far fa-eye"></i>
+                            </button>
+                        </div>
                     </div>
                     
                     <div class="mb-3 form-check">
@@ -40,7 +46,8 @@
                 </form>
                 
                 <div class="text-center mt-3">
-                    <a href="#" class="text-muted">Quên mật khẩu?</a>
+                    <a href="#" class="text-muted me-3">Quên mật khẩu?</a>
+                    <a href="{% url 'signup' %}" class="text-muted">Chưa có tài khoản? Đăng ký</a>
                 </div>
             </div>
         </div>
@@ -110,5 +117,31 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
         submitBtn.innerHTML = originalText;
     }
 });
+
+// Toggle show/hide password
+document.getElementById('toggle-password').addEventListener('click', function() {
+    const pwdInput = document.getElementById('password');
+    const icon = this.querySelector('i');
+    const isHidden = pwdInput.type === 'password';
+    pwdInput.type = isHidden ? 'text' : 'password';
+    icon.classList.toggle('fa-eye');
+    icon.classList.toggle('fa-eye-slash');
+    this.setAttribute('aria-label', isHidden ? 'Ẩn mật khẩu' : 'Hiện mật khẩu');
+});
+
+// Show/hide toggle button only when password has value
+(function() {
+    const pwdInput = document.getElementById('password');
+    const toggleBtn = document.getElementById('toggle-password');
+    const updateVisibility = () => {
+        if (pwdInput.value && pwdInput.value.length > 0) {
+            toggleBtn.classList.remove('d-none');
+        } else {
+            toggleBtn.classList.add('d-none');
+        }
+    };
+    pwdInput.addEventListener('input', updateVisibility);
+    updateVisibility();
+})();
 </script>
 {% endblock %}

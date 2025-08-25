@@ -45,7 +45,11 @@ class CustomTokenObtainPairView(TokenObtainPairView):
 @api_view(['POST'])
 @permission_classes([permissions.AllowAny])
 def register(request):
-    serializer = UserCreateSerializer(data=request.data)
+    # Force default user_type to PATIENT regardless of client input
+    data = request.data.copy()
+    if 'user_type' not in data or not data.get('user_type'):
+        data['user_type'] = 'PATIENT'
+    serializer = UserCreateSerializer(data=data)
     if serializer.is_valid():
         user = serializer.save()
         
@@ -66,10 +70,9 @@ def register(request):
         return Response({
             'message': 'User created successfully',
             'user': UserSerializer(user).data,
-            'tokens': {
-                'refresh': str(refresh),
-                'access': str(refresh.access_token),
-            }
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+            'user_type': user.user_type,
         }, status=status.HTTP_201_CREATED)
     
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

@@ -49,8 +49,8 @@
 <div class="card">
     <div class="card-body">
         <div class="table-responsive">
-            <table class="table table-hover" id="patients-table">
-                <thead class="table-light">
+            <table class="table table-hover text-center align-middle" id="patients-table">
+                <thead class="table-light text-center">
                     <tr>
                         <th>Mã BN</th>
                         <th>Họ tên</th>
@@ -61,7 +61,7 @@
                         <th>Thao tác</th>
                     </tr>
                 </thead>
-                <tbody id="patients-tbody">
+                <tbody id="patients-tbody" class="text-center">
                     <!-- Data will be loaded here -->
                 </tbody>
             </table>
@@ -84,7 +84,7 @@
                 <h5 class="modal-title">Thêm bệnh nhân mới</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form id="add-patient-form">
+            <form id="add-patient-form" novalidate>
                 <div class="modal-body">
                     <div class="row">
                         <div class="col-md-6 mb-3">
@@ -112,29 +112,31 @@
                             <input type="tel" class="form-control" id="phone_number" name="phone_number" required>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="citizen_id" class="form-label">CCCD/CMND *</label>
+                            <label for="citizen_id" class="form-label">CCCD *</label>
                             <input type="text" class="form-control" id="citizen_id" name="citizen_id" required>
                         </div>
                     </div>
                     
-                    <div class="mb-3">
-                        <label for="address" class="form-label">Địa chỉ *</label>
-                        <input type="text" class="form-control" id="address" name="address" required>
-                    </div>
-                    
                     <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <label for="ward" class="form-label">Phường/Xã *</label>
-                            <input type="text" class="form-control" id="ward" name="ward" required>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label for="district" class="form-label">Quận/Huyện *</label>
-                            <input type="text" class="form-control" id="district" name="district" required>
-                        </div>
-                        <div class="col-md-4 mb-3">
+                        <div class="col-md-6 mb-2">
                             <label for="province" class="form-label">Tỉnh/TP *</label>
-                            <input type="text" class="form-control" id="province" name="province" required>
+                            <select class="form-select" id="province" name="province" required>
+                                <option value="">Chọn Tỉnh/Thành phố</option>
+                            </select>
                         </div>
+                        <div class="col-md-6 mb-2">
+                            <label for="ward" class="form-label">Phường/Xã *</label>
+                            <select class="form-select" id="ward" name="ward" required disabled>
+                                <option value="">Chọn Phường/Xã</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    
+
+                    <div class="mb-3">
+                        <label for="address" class="form-label">Địa chỉ (Số nhà, đường) *</label>
+                        <input type="text" class="form-control" id="address" name="address" required disabled placeholder="Ví dụ: 12 Nguyễn Trãi">
                     </div>
                     
                     <h6 class="mt-4 mb-3">Liên hệ khẩn cấp</h6>
@@ -153,25 +155,25 @@
                         </div>
                     </div>
                     
-                    <div class="form-check mb-3">
+                    <div class="form-check mb-2">
                         <input class="form-check-input" type="checkbox" id="has_insurance" name="has_insurance">
                         <label class="form-check-label" for="has_insurance">
                             Có BHYT
                         </label>
                     </div>
-                    
-                    <div id="insurance-fields" style="display: none;">
+
+                    <div id="insurance-fields" style="display: block;">
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="insurance_number" class="form-label">Số thẻ BHYT</label>
-                                <input type="text" class="form-control" id="insurance_number" name="insurance_number">
+                                <input type="text" class="form-control" id="insurance_number" name="insurance_number" disabled>
                             </div>
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                    <button type="submit" class="btn btn-primary">Lưu thông tin</button>
+                    <button type="submit" class="btn btn-primary" id="save-patient-btn" disabled>Lưu thông tin</button>
                 </div>
             </form>
         </div>
@@ -179,4 +181,121 @@
 </div>
 
 <script src="{% load static %}{% static 'js/patients.js' %}"></script>
+<!-- View Patient Modal -->
+<div class="modal fade" id="viewPatientModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Thông tin bệnh nhân</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="view-patient-loading" class="text-center py-4" style="display:none;">
+                    <div class="spinner-border text-primary" role="status"></div>
+                </div>
+                <div id="view-patient-error" class="alert alert-danger d-none"></div>
+                <div id="view-patient-content" class="d-none">
+                    <ul class="nav nav-tabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="vp-view-tab" data-bs-toggle="tab" data-bs-target="#vp-view" type="button" role="tab">Xem</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="vp-edit-tab" data-bs-toggle="tab" data-bs-target="#vp-edit" type="button" role="tab">Chỉnh sửa</button>
+                        </li>
+                    </ul>
+                    <div class="tab-content pt-3">
+                        <div class="tab-pane fade show active" id="vp-view" role="tabpanel">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div><strong>Mã BN:</strong> <span id="vp-code">-</span></div>
+                                    <div><strong>Họ tên:</strong> <span id="vp-name">-</span></div>
+                                    <div><strong>Giới tính:</strong> <span id="vp-gender">-</span></div>
+                                    <div><strong>Ngày sinh:</strong> <span id="vp-dob">-</span> (<span id="vp-age">-</span> tuổi)</div>
+                                    <div><strong>SĐT:</strong> <span id="vp-phone">-</span></div>
+                                    <div><strong>Email:</strong> <span id="vp-email">-</span></div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div><strong>CCCD:</strong> <span id="vp-citizen">-</span></div>
+                                    <div><strong>Địa chỉ:</strong> <span id="vp-address">-</span></div>
+                                    <div><strong>Nhóm máu:</strong> <span id="vp-blood">-</span></div>
+                                    <div><strong>Dị ứng:</strong> <span id="vp-allergies">-</span></div>
+                                    <div><strong>Bệnh mãn tính:</strong> <span id="vp-chronic">-</span></div>
+                                </div>
+                            </div>
+                            <hr/>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="mb-2"><strong>Liên hệ khẩn cấp</strong></div>
+                                    <div><strong>Tên:</strong> <span id="vp-emg-name">-</span></div>
+                                    <div><strong>SĐT:</strong> <span id="vp-emg-phone">-</span></div>
+                                    <div><strong>Quan hệ:</strong> <span id="vp-emg-rel">-</span></div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-2"><strong>BHYT</strong> <span class="badge bg-secondary" id="vp-ins-status">-</span></div>
+                                    <div><strong>Số thẻ:</strong> <span id="vp-ins-number">-</span></div>
+                                    <div><strong>Hiệu lực:</strong> <span id="vp-ins-range">-</span></div>
+                                    <div><strong>Mã KCB:</strong> <span id="vp-ins-hosp">-</span></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="vp-edit" role="tabpanel">
+                            <form id="vp-edit-form" novalidate>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Họ và tên</label>
+                                        <input type="text" class="form-control" id="ve-full_name">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Ngày sinh</label>
+                                        <input type="date" class="form-control" id="ve-date_of_birth">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Giới tính</label>
+                                        <select class="form-select" id="ve-gender">
+                                            <option value="M">Nam</option>
+                                            <option value="F">Nữ</option>
+                                            <option value="O">Khác</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Số điện thoại</label>
+                                        <input type="tel" class="form-control" id="ve-phone_number">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Email</label>
+                                        <input type="email" class="form-control" id="ve-email">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Tỉnh/TP</label>
+                                        <select class="form-select" id="ve-province" required>
+                                            <option value="">Chọn Tỉnh/Thành phố</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Phường/Xã</label>
+                                        <select class="form-select" id="ve-ward" required disabled>
+                                            <option value="">Chọn Phường/Xã</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-12">
+                                        <label class="form-label">Địa chỉ</label>
+                                        <input type="text" class="form-control" id="ve-address" disabled>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">CCCD</label>
+                                        <input type="text" class="form-control" id="ve-citizen_id">
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                <button type="button" class="btn btn-primary" id="vp-save-btn">Lưu thay đổi</button>
+            </div>
+        </div>
+    </div>
+ </div>
 {% endblock %}
