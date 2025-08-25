@@ -18,7 +18,7 @@ class PatientSerializer(serializers.ModelSerializer):
         model = Patient
         fields = [
             'id', 'patient_code', 'full_name', 'date_of_birth', 'age', 'gender',
-            'phone_number', 'email', 'address', 'ward', 'district', 'province',
+            'phone_number', 'email', 'address', 'ward', 'province',
             'full_address', 'citizen_id', 'blood_type', 'allergies', 'chronic_diseases',
             'emergency_contact_name', 'emergency_contact_phone', 'emergency_contact_relationship',
             'has_insurance', 'insurance_number', 'insurance_valid_from', 'insurance_valid_to',
@@ -75,7 +75,7 @@ class PatientCreateSerializer(serializers.ModelSerializer):
         model = Patient
         fields = [
             'full_name', 'date_of_birth', 'gender', 'phone_number', 'email',
-            'address', 'ward', 'district', 'province', 'citizen_id',
+            'address', 'ward', 'province', 'citizen_id',
             'blood_type', 'allergies', 'chronic_diseases',
             'emergency_contact_name', 'emergency_contact_phone', 'emergency_contact_relationship',
             'has_insurance', 'insurance_number', 'insurance_valid_from', 'insurance_valid_to',
@@ -88,12 +88,13 @@ class PatientCreateSerializer(serializers.ModelSerializer):
             'phone_number': {'required': True},
             'address': {'required': True},
             'ward': {'required': True},
-            'district': {'required': True},
+            # district removed
             'province': {'required': True},
             'citizen_id': {'required': True},
-            'emergency_contact_name': {'required': True},
-            'emergency_contact_phone': {'required': True},
-            'emergency_contact_relationship': {'required': True},
+            # emergency contact nullable
+            'emergency_contact_name': {'required': False, 'allow_null': True, 'allow_blank': True},
+            'emergency_contact_phone': {'required': False, 'allow_null': True, 'allow_blank': True},
+            'emergency_contact_relationship': {'required': False, 'allow_null': True, 'allow_blank': True},
         }
     
     def validate(self, attrs):

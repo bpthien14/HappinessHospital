@@ -49,7 +49,6 @@ class Patient(models.Model):
     # Address Information
     address = models.TextField(help_text="Địa chỉ thường trú")
     ward = models.CharField(max_length=100, help_text="Phường/Xã")
-    district = models.CharField(max_length=100, help_text="Quận/Huyện")
     province = models.CharField(max_length=100, help_text="Tỉnh/Thành phố")
     
     # Identity Information
@@ -75,14 +74,18 @@ class Patient(models.Model):
     chronic_diseases = models.TextField(blank=True, help_text="Bệnh mãn tính (nếu có)")
     
     # Emergency Contact
-    emergency_contact_name = models.CharField(max_length=255, help_text="Tên người liên hệ khẩn cấp")
+    emergency_contact_name = models.CharField(max_length=255, blank=True, null=True, help_text="Tên người liên hệ khẩn cấp")
     emergency_contact_phone = models.CharField(
         max_length=15,
         validators=[phone_validator],
+        blank=True,
+        null=True,
         help_text="SĐT người liên hệ khẩn cấp"
     )
     emergency_contact_relationship = models.CharField(
         max_length=100,
+        blank=True,
+        null=True,
         help_text="Mối quan hệ với bệnh nhân"
     )
     
@@ -151,7 +154,7 @@ class Patient(models.Model):
     @property
     def full_address(self):
         """Địa chỉ đầy đủ"""
-        return f"{self.address}, {self.ward}, {self.district}, {self.province}"
+        return f"{self.address}, {self.ward}, {self.province}"
     
     @property
     def insurance_status(self):

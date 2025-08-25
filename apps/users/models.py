@@ -32,6 +32,11 @@ class User(AbstractUser):
         db_table = 'users'
         verbose_name = 'User'
         verbose_name_plural = 'Users'
+        constraints = [
+            models.CheckConstraint(check=~models.Q(username=''), name='user_username_not_blank'),
+            models.CheckConstraint(check=~models.Q(first_name=''), name='user_first_name_not_blank'),
+            models.CheckConstraint(check=~models.Q(last_name=''), name='user_last_name_not_blank'),
+        ]
     
     def __str__(self):
         return f"{self.username} ({self.get_user_type_display()})"

@@ -228,7 +228,7 @@ async function handleAddPatient(e) {
 
     const formData = new FormData(form);
     const patientData = Object.fromEntries(formData.entries());
-    // Gửi tên hiển thị thay vì mã code cho province/ward (bỏ district)
+    // Gửi tên hiển thị thay vì mã code cho province/ward (đã bỏ district)
     if (provinceSel?.selectedIndex > 0) {
         patientData.province = provinceSel.options[provinceSel.selectedIndex].textContent.trim();
     }
@@ -236,9 +236,7 @@ async function handleAddPatient(e) {
         patientData.ward = wardSel.options[wardSel.selectedIndex].textContent.trim();
     }
     // Mặc định Quận/Huyện khi backend chưa chỉnh
-    if (!patientData.district || !patientData.district.trim()) {
-        patientData.district = 'Quận 5';
-    }
+    // field district đã xoá
     
     // Convert checkbox to boolean
     patientData.has_insurance = document.getElementById('has_insurance').checked;
@@ -546,7 +544,7 @@ document.addEventListener('click', async function(e) {
             phone_number: document.getElementById('ve-phone_number').value.trim(),
             email: document.getElementById('ve-email').value.trim() || null,
             province: document.getElementById('ve-province').value.trim(),
-            district: 'Quận 5',
+            // district removed
             ward: document.getElementById('ve-ward').value.trim(),
             address: document.getElementById('ve-address').value.trim(),
             citizen_id: document.getElementById('ve-citizen_id').value.trim(),
@@ -663,7 +661,7 @@ function humanizeField(field) {
         email: 'Email',
         address: 'Địa chỉ',
         ward: 'Phường/Xã',
-        district: 'Quận/Huyện',
+        // district removed
         province: 'Tỉnh/TP',
         citizen_id: 'CCCD/CMND',
         emergency_contact_name: 'Tên người liên hệ',

@@ -25,7 +25,7 @@ class PatientAdmin(admin.ModelAdmin):
         }),
         ('Thông tin liên lạc', {
             'fields': (
-                'phone_number', 'email', 'address', 'ward', 'district', 'province', 'full_address'
+                'phone_number', 'email', 'address', 'ward', 'province', 'full_address'
             )
         }),
         ('Giấy tờ tùy thân', {
