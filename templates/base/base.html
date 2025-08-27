@@ -43,7 +43,12 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#" id="appointments-link">
+                        <a class="nav-link" href="{% url 'doctor_list' %}">
+                            <i class="fas fa-user-md"></i> Bác sĩ
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'appointment_list' %}">
                             <i class="fas fa-calendar-alt"></i> Lịch khám
                         </a>
                     </li>

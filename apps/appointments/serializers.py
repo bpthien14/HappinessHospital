@@ -2,7 +2,7 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django.db import models
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, time
 
 from .models import (
     Department, DoctorProfile, DoctorSchedule, 
@@ -46,6 +46,7 @@ class DoctorProfileSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at', 'updated_at']
 
 class DoctorScheduleSerializer(serializers.ModelSerializer):
+    """DEPRECATED: Không còn sử dụng với logic đơn giản mới"""
     doctor_name = serializers.CharField(source='doctor.user.full_name', read_only=True)
     weekday_display = serializers.CharField(source='get_weekday_display', read_only=True)
     shift_display = serializers.CharField(source='get_shift_display', read_only=True)
@@ -141,44 +142,35 @@ class AppointmentCreateSerializer(serializers.ModelSerializer):
                 doctor = DoctorProfile.objects.get(id=doctor_id, is_active=True)
                 attrs['doctor'] = doctor  # Replace UUID with object for later use
                 
-                # Check doctor availability
-                weekday = appointment_date.weekday()
-                schedules = doctor.schedules.filter(
-                    weekday=weekday,
-                    effective_from__lte=appointment_date,
-                    is_active=True
-                ).filter(
-                    models.Q(effective_to__isnull=True) | 
-                    models.Q(effective_to__gte=appointment_date)
-                )
+                # Check doctor's daily capacity (simplified logic)
+                existing_appointments = Appointment.objects.filter(
+                    doctor=doctor,
+                    appointment_date=appointment_date,
+                    status__in=['SCHEDULED', 'CONFIRMED', 'CHECKED_IN', 'IN_PROGRESS']
+                ).count()
                 
-                if not schedules.exists():
+                if existing_appointments >= doctor.max_patients_per_day:
                     raise serializers.ValidationError({
-                        'doctor': 'Bác sĩ không có lịch làm việc trong ngày này'
+                        'doctor': f'Bác sĩ đã đủ lịch trong ngày này (tối đa {doctor.max_patients_per_day} bệnh nhân/ngày)'
                     })
                 
-                # Check time slot availability
+                # Check time slot availability (simplified - only check business hours 8:00-17:00)
                 if appointment_time:
-                    available_schedule = None
-                    for schedule in schedules:
-                        if schedule.start_time <= appointment_time <= schedule.end_time:
-                            available_schedule = schedule
-                            break
-                    
-                    if not available_schedule:
+                    # Basic business hours check
+                    if appointment_time < time(8, 0) or appointment_time >= time(17, 0):
                         raise serializers.ValidationError({
-                            'appointment_time': 'Thời gian không nằm trong ca làm việc của bác sĩ'
+                            'appointment_time': 'Chỉ có thể đặt lịch trong giờ làm việc (8:00-17:00)'
                         })
                     
                     # Check if time slot is already booked
-                    existing_appointments = Appointment.objects.filter(
+                    existing_appointment = Appointment.objects.filter(
                         doctor=doctor,
                         appointment_date=appointment_date,
                         appointment_time=appointment_time,
                         status__in=['SCHEDULED', 'CONFIRMED', 'CHECKED_IN', 'IN_PROGRESS']
-                    ).count()
+                    ).exists()
                     
-                    if existing_appointments >= 1:
+                    if existing_appointment:
                         raise serializers.ValidationError({
                             'appointment_time': 'Khung giờ này đã được đặt'
                         })

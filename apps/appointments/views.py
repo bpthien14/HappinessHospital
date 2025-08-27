@@ -1,11 +1,12 @@
 from rest_framework import generics, status, filters
-from rest_framework.decorators import api_view, action
+from rest_framework.decorators import api_view, action, permission_classes
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Q, Count
 from django.utils import timezone
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, time
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 
 from .models import (
@@ -73,16 +74,17 @@ class DoctorProfileViewSet(ModelViewSet):
         
         return super().get_permissions()
     
-    @extend_schema(
-        responses={200: DoctorScheduleSerializer(many=True)}
-    )
-    @action(detail=True, methods=['get'])
-    def schedules(self, request, pk=None):
-        """Get doctor's schedules"""
-        doctor = self.get_object()
-        schedules = doctor.schedules.filter(is_active=True)
-        serializer = DoctorScheduleSerializer(schedules, many=True)
-        return Response(serializer.data)
+    # DEPRECATED: schedules action không còn cần thiết với logic đơn giản mới
+    # @extend_schema(
+    #     responses={200: DoctorScheduleSerializer(many=True)}
+    # )
+    # @action(detail=True, methods=['get'])
+    # def schedules(self, request, pk=None):
+    #     """Get doctor's schedules"""
+    #     doctor = self.get_object()
+    #     schedules = doctor.schedules.filter(is_active=True)
+    #     serializer = DoctorScheduleSerializer(schedules, many=True)
+    #     return Response(serializer.data)
     
     @extend_schema(
         parameters=[
@@ -110,44 +112,45 @@ class DoctorProfileViewSet(ModelViewSet):
             return Response({'error': 'Cannot get slots for past dates'}, 
                           status=status.HTTP_400_BAD_REQUEST)
         
-        # Get doctor's schedule for the day
-        weekday = appointment_date.weekday()
-        schedules = doctor.schedules.filter(
-            weekday=weekday,
-            effective_from__lte=appointment_date,
-            is_active=True
-        ).filter(
-            Q(effective_to__isnull=True) | Q(effective_to__gte=appointment_date)
-        )
+        # Check if doctor has reached daily limit
+        existing_appointments = Appointment.objects.filter(
+            doctor=doctor,
+            appointment_date=appointment_date,
+            status__in=['SCHEDULED', 'CONFIRMED', 'CHECKED_IN', 'IN_PROGRESS']
+        ).count()
         
-        if not schedules.exists():
-            return Response([])  # No schedule for this day
+        if existing_appointments >= doctor.max_patients_per_day:
+            return Response([])  # No available slots - daily limit reached
         
+        # Generate simple time slots for business hours (8:00-17:00)
         available_slots = []
-        for schedule in schedules:
-            # Generate time slots
-            current_time = datetime.combine(appointment_date, schedule.start_time)
-            end_time = datetime.combine(appointment_date, schedule.end_time)
+        start_hour = 8  # 8:00 AM
+        end_hour = 17   # 5:00 PM
+        duration = doctor.consultation_duration  # minutes per appointment
+        
+        current_time = datetime.combine(appointment_date, time(start_hour, 0))
+        end_time = datetime.combine(appointment_date, time(end_hour, 0))
+        
+        while current_time < end_time and len(available_slots) < (doctor.max_patients_per_day - existing_appointments):
+            slot_time = current_time.time()
             
-            while current_time < end_time:
-                slot_time = current_time.time()
-                
-                # Check existing appointments
-                booked_count = Appointment.objects.filter(
-                    doctor=doctor,
-                    appointment_date=appointment_date,
-                    appointment_time=slot_time,
-                    status__in=['SCHEDULED', 'CONFIRMED', 'CHECKED_IN', 'IN_PROGRESS']
-                ).count()
-                
+            # Check if this time slot is already booked
+            is_booked = Appointment.objects.filter(
+                doctor=doctor,
+                appointment_date=appointment_date,
+                appointment_time=slot_time,
+                status__in=['SCHEDULED', 'CONFIRMED', 'CHECKED_IN', 'IN_PROGRESS']
+            ).exists()
+            
+            if not is_booked:
                 available_slots.append({
                     'time': slot_time,
-                    'available': booked_count < 1,
-                    'booked_count': booked_count,
+                    'available': True,
+                    'booked_count': 0,
                     'max_appointments': 1
                 })
-                
-                current_time += timedelta(minutes=schedule.appointment_duration)
+            
+            current_time += timedelta(minutes=duration)
         
         serializer = AvailableSlotSerializer(available_slots, many=True)
         return Response(serializer.data)
@@ -375,3 +378,30 @@ def appointment_statistics(request):
         stats['by_appointment_type'][type_display] = item['count']
     
     return Response(stats)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def test_doctors_list(request):
+    """Test endpoint để lấy danh sách bác sĩ không cần auth"""
+    try:
+        doctors = DoctorProfile.objects.select_related('user', 'department').all()
+        data = []
+        for doctor in doctors:
+            data.append({
+                'id': str(doctor.user.id),
+                'username': doctor.user.username,
+                'full_name': doctor.user.full_name,
+                'email': doctor.user.email,
+                'phone_number': doctor.user.phone_number,
+                'department': doctor.department.name,
+                'specialization': doctor.specialization,
+                'degree': doctor.get_degree_display(),
+                'experience_years': doctor.experience_years,
+                'license_number': doctor.license_number,
+            })
+        return Response({
+            'count': len(data),
+            'results': data
+        })
+    except Exception as e:
+        return Response({'error': str(e)}, status=500)

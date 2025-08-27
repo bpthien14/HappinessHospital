@@ -9,4 +9,9 @@ urlpatterns = [
     path('patients/<uuid:patient_id>/', views.patient_detail_view, name='patient_detail'),
     path('users/', views.user_list_view, name='user_list'),
     path('users/<uuid:user_id>/', views.user_detail_view, name='user_detail'),
+    path('doctors/', views.doctor_list_view, name='doctor_list'),
+    path('doctors/<uuid:doctor_id>/', views.doctor_detail_view, name='doctor_detail'),
+    path('appointments/', views.appointment_list_view, name='appointment_list'),
+    path('appointments/<uuid:appointment_id>/', views.appointment_detail_view, name='appointment_detail'),
+    path('', views.dashboard_view, name='home'),  # Redirect to dashboard
 ]

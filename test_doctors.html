@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Doctors API</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .error { color: red; }
+        .success { color: green; }
+        .loading { color: blue; }
+        pre { background: #f5f5f5; padding: 10px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Test Doctors API</h1>
+    
+    <div id="status"></div>
+    <div id="result"></div>
+    
+    <script>
+        async function testAPI() {
+            const statusDiv = document.getElementById('status');
+            const resultDiv = document.getElementById('result');
+            
+            statusDiv.innerHTML = '<div class="loading">Testing API...</div>';
+            
+            try {
+                // Test simple fetch
+                const response = await fetch('/api/doctors/');
+                statusDiv.innerHTML = `<div class="success">Status: ${response.status} ${response.statusText}</div>`;
+                
+                const text = await response.text();
+                resultDiv.innerHTML = `<pre>${text}</pre>`;
+                
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+                resultDiv.innerHTML = '';
+            }
+        }
+        
+        // Test ngay khi load trang
+        testAPI();
+    </script>
+</body>
+</html>

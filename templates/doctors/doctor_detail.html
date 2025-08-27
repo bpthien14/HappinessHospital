@@ -1,0 +1,257 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Chi tiết bác sĩ - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'doctor_list' %}">Danh sách bác sĩ</a></li>
+                <li class="breadcrumb-item active">Chi tiết bác sĩ</li>
+            </ol>
+        </nav>
+        <h2><i class="fas fa-user-md"></i> Chi tiết bác sĩ</h2>
+    </div>
+    <div>
+        <button class="btn btn-outline-primary me-2" onclick="editDoctor()">
+            <i class="fas fa-edit"></i> Chỉnh sửa
+        </button>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#scheduleModal">
+            <i class="fas fa-calendar-alt"></i> Lịch khám
+        </button>
+    </div>
+</div>
+
+<!-- Doctor Info Card -->
+<div class="row">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <div class="mb-3">
+                    <img src="https://via.placeholder.com/150" class="rounded-circle" alt="Doctor Avatar" id="doctor-avatar" style="width: 150px; height: 150px; object-fit: cover;">
+                </div>
+                <h4 id="doctor-name">-</h4>
+                <p class="text-muted mb-2" id="doctor-title">-</p>
+                <span class="badge bg-success mb-3" id="doctor-status">Đang hoạt động</span>
+                
+                <!-- Contact Info -->
+                <div class="text-start">
+                    <p><i class="fas fa-envelope text-primary"></i> <span id="doctor-email">-</span></p>
+                    <p><i class="fas fa-phone text-primary"></i> <span id="doctor-phone">-</span></p>
+                    <p><i class="fas fa-hospital text-primary"></i> <span id="doctor-department">-</span></p>
+                    <p><i class="fas fa-id-badge text-primary"></i> <span id="doctor-employee-id">-</span></p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-8">
+        <!-- Professional Info -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5><i class="fas fa-stethoscope"></i> Thông tin chuyên môn</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <strong>Bằng cấp:</strong>
+                        <p id="doctor-degree">-</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>Năm kinh nghiệm:</strong>
+                        <p id="doctor-experience">-</p>
+                    </div>
+                    <div class="col-md-12 mb-3">
+                        <strong>Chuyên khoa:</strong>
+                        <p id="doctor-specializations">-</p>
+                    </div>
+                    <div class="col-md-12 mb-3">
+                        <strong>Bằng cấp & Chứng chỉ:</strong>
+                        <p id="doctor-qualifications">-</p>
+                    </div>
+                    <div class="col-md-12">
+                        <strong>Tiểu sử:</strong>
+                        <p id="doctor-bio">-</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Statistics -->
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-chart-bar"></i> Thống kê</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-3 mb-3">
+                        <div class="border rounded p-3">
+                            <h4 class="text-primary mb-1" id="total-appointments">-</h4>
+                            <small>Tổng lịch khám</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="border rounded p-3">
+                            <h4 class="text-success mb-1" id="completed-appointments">-</h4>
+                            <small>Đã hoàn thành</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="border rounded p-3">
+                            <h4 class="text-warning mb-1" id="pending-appointments">-</h4>
+                            <small>Đang chờ</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="border rounded p-3">
+                            <h4 class="text-info mb-1" id="total-prescriptions">-</h4>
+                            <small>Đơn thuốc</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Appointments -->
+<div class="card mt-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5><i class="fas fa-calendar-check"></i> Lịch khám gần đây</h5>
+        <a href="#" class="btn btn-sm btn-outline-primary">Xem tất cả</a>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Ngày khám</th>
+                        <th>Giờ</th>
+                        <th>Bệnh nhân</th>
+                        <th>Lý do khám</th>
+                        <th>Trạng thái</th>
+                        <th>Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody id="recent-appointments-body">
+                    <tr>
+                        <td colspan="6" class="text-center py-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Đang tải...</span>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Schedule Modal -->
+<div class="modal fade" id="scheduleModal" tabindex="-1" aria-labelledby="scheduleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="scheduleModalLabel">
+                    <i class="fas fa-calendar-alt"></i> Lịch khám của bác sĩ
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <button class="btn btn-outline-primary btn-sm" id="prev-week">
+                            <i class="fas fa-chevron-left"></i> Tuần trước
+                        </button>
+                        <span class="mx-3" id="current-week">Tuần hiện tại</span>
+                        <button class="btn btn-outline-primary btn-sm" id="next-week">
+                            Tuần sau <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addScheduleModal">
+                        <i class="fas fa-plus"></i> Thêm lịch
+                    </button>
+                </div>
+                
+                <!-- Weekly Schedule Grid -->
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th style="width: 100px;">Giờ</th>
+                                <th>Thứ 2</th>
+                                <th>Thứ 3</th>
+                                <th>Thứ 4</th>
+                                <th>Thứ 5</th>
+                                <th>Thứ 6</th>
+                                <th>Thứ 7</th>
+                                <th>Chủ nhật</th>
+                            </tr>
+                        </thead>
+                        <tbody id="schedule-grid">
+                            <!-- Schedule grid will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Schedule Modal -->
+<div class="modal fade" id="addScheduleModal" tabindex="-1" aria-labelledby="addScheduleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addScheduleModalLabel">
+                    <i class="fas fa-plus"></i> Thêm lịch khám
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="add-schedule-form">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="schedule-date" class="form-label">Ngày khám <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" id="schedule-date" name="date" required>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="start-time" class="form-label">Giờ bắt đầu <span class="text-danger">*</span></label>
+                            <input type="time" class="form-control" id="start-time" name="start_time" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="end-time" class="form-label">Giờ kết thúc <span class="text-danger">*</span></label>
+                            <input type="time" class="form-control" id="end-time" name="end_time" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="max-patients" class="form-label">Số bệnh nhân tối đa</label>
+                        <input type="number" class="form-control" id="max-patients" name="max_patients" min="1" value="10">
+                    </div>
+                    <div class="mb-3">
+                        <label for="schedule-notes" class="form-label">Ghi chú</label>
+                        <textarea class="form-control" id="schedule-notes" name="notes" rows="3" 
+                                  placeholder="Ghi chú về lịch khám..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Lưu lịch
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% load static %}
+<script>
+    // Pass doctor ID to JavaScript
+    window.doctorId = '{{ doctor_id }}';
+</script>
+<script src="{% static 'js/doctor_detail.js' %}"></script>
+{% endblock %}

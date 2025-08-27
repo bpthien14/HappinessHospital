@@ -38,6 +38,23 @@ def user_detail_view(request, user_id):
     """User detail view - No authentication required, handled by frontend"""
     context = {'user_id': user_id}
     return render(request, 'users/user_detail.html', context)
+def doctor_list_view(request):
+    """Doctor list view - No authentication required, handled by frontend"""
+    return render(request, 'doctors/doctor_list.html')
+
+def doctor_detail_view(request, doctor_id):
+    """Doctor detail view - No authentication required, handled by frontend"""
+    context = {'doctor_id': doctor_id}
+    return render(request, 'doctors/doctor_detail.html', context)
+
+def appointment_list_view(request):
+    """Appointment list view - No authentication required, handled by frontend"""
+    return render(request, 'appointments/appointment_list.html')
+
+def appointment_detail_view(request, appointment_id):
+    """Appointment detail view - No authentication required, handled by frontend"""
+    context = {'appointment_id': appointment_id}
+    return render(request, 'appointments/appointment_detail.html', context)
 
 
 # ===== Địa giới hành chính Việt Nam (local JSON via vietnam-provinces) =====

@@ -89,7 +89,14 @@ class DoctorProfile(models.Model):
         return f"BS. {self.user.full_name} - {self.specialization}"
 
 class DoctorSchedule(models.Model):
-    """Lịch làm việc của bác sĩ"""
+    """
+    DEPRECATED: Lịch làm việc của bác sĩ (không còn sử dụng trong logic đơn giản)
+    
+    Logic mới chỉ dựa vào:
+    - DoctorProfile.max_patients_per_day
+    - DoctorProfile.consultation_duration
+    - Giờ làm việc cố định: 8:00-17:00
+    """
     
     WEEKDAY_CHOICES = [
         (0, 'Thứ Hai'),
@@ -284,20 +291,21 @@ class Appointment(models.Model):
         if self.appointment_date < date.today():
             raise ValidationError('Không thể đặt lịch hẹn trong quá khứ')
         
-        # Validate doctor availability
+        # Validate doctor's daily capacity
         if hasattr(self, 'doctor') and hasattr(self, 'appointment_date'):
-            weekday = self.appointment_date.weekday()
-            doctor_schedules = self.doctor.schedules.filter(
-                weekday=weekday,
-                effective_from__lte=self.appointment_date,
-                is_active=True
-            ).filter(
-                models.Q(effective_to__isnull=True) | 
-                models.Q(effective_to__gte=self.appointment_date)
-            )
+            # Count existing appointments for this doctor on this date
+            existing_appointments = Appointment.objects.filter(
+                doctor=self.doctor,
+                appointment_date=self.appointment_date,
+                status__in=['SCHEDULED', 'CONFIRMED', 'CHECKED_IN', 'IN_PROGRESS']
+            ).exclude(id=self.id if self.id else None).count()
             
-            if not doctor_schedules.exists():
-                raise ValidationError('Bác sĩ không có lịch làm việc trong ngày này')
+            if existing_appointments >= self.doctor.max_patients_per_day:
+                raise ValidationError(f'Bác sĩ đã đủ lịch trong ngày này (tối đa {self.doctor.max_patients_per_day} bệnh nhân/ngày)')
+        
+        # Set estimated duration from doctor's consultation duration
+        if hasattr(self, 'doctor') and self.doctor:
+            self.estimated_duration = self.doctor.consultation_duration
     
     def save(self, *args, **kwargs):
         # Auto-generate appointment number
