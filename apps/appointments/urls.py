@@ -11,6 +11,9 @@ urlpatterns = [
     # Statistics endpoint
     path('appointments/statistics/', views.appointment_statistics, name='appointment-statistics'),
     
+    # Test endpoint 
+    path('doctors/test/', views.test_doctors_list, name='test-doctors-list'),
+    
     # Include router URLs
     path('', include(router.urls)),
 ]
