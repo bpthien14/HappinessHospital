@@ -71,6 +71,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
     
     department_name = serializers.CharField(source='department.name', read_only=True)
     department_code = serializers.CharField(source='department.code', read_only=True)
+    department_location = serializers.CharField(source='department.location', read_only=True)
     
     booked_by_name = serializers.CharField(source='booked_by.full_name', read_only=True)
     
@@ -90,7 +91,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'appointment_number', 'patient', 'patient_name', 'patient_code', 'patient_phone',
             'doctor', 'doctor_name', 'doctor_specialization',
-            'department', 'department_name', 'department_code',
+            'department', 'department_name', 'department_code', 'department_location',
             'appointment_date', 'appointment_time', 'appointment_datetime',
             'estimated_duration', 'appointment_type', 'appointment_type_display',
             'priority', 'priority_display', 'status', 'status_display',

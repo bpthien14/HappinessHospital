@@ -1,4 +1,4 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET
@@ -20,6 +20,14 @@ def signup_view(request):
 def dashboard_view(request):
     """Dashboard view - No authentication required, handled by frontend"""
     return render(request, 'dashboard/dashboard.html')
+
+def patient_portal_view(request):
+    """Patient portal view - for PATIENT users only (frontend enforcement)"""
+    return render(request, 'patients/patient_portal.html')
+
+def portal_redirect_view(request):
+    """Redirect legacy portal paths to new /portal/"""
+    return redirect('portal')
 
 def patient_list_view(request):
     """Patient list view - No authentication required, handled by frontend"""

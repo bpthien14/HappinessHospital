@@ -101,13 +101,13 @@
     }
 
     .form-group {
-        margin-bottom: 0.3rem;
+        margin-bottom: 0.2rem;
     }
 
     .form-label {
         font-weight: 600;
         color: #333;
-        margin-bottom: 0.3rem;
+        margin-bottom: 0.15rem;
         font-size: 0.9rem;
     }
 
@@ -264,9 +264,9 @@
                                     </label>
                                     <select class="form-select" id="gender" name="gender" required>
                                         <option value="">Chọn giới tính</option>
-                                        <option value="M">👨 Nam</option>
-                                        <option value="F">👩 Nữ</option>
-                                        <option value="O">🏳️‍🌈 Khác</option>
+                                        <option value="M">Nam</option>
+                                        <option value="F">Nữ</option>
+                                        <option value="O">Khác</option>
                                     </select>
                                 </div>
                             </div>
@@ -278,49 +278,66 @@
                                     <input type="tel" class="form-control" id="phone_number" name="phone_number" required placeholder="0123456789">
                                 </div>
                             </div>
+
+                            <div class="col-md-6">
+                                <div class="form-group mb-2">
+                                    <label for="citizen_id" class="form-label">
+                                        <i class="fas fa-id-card me-2"></i>CCCD *
+                                    </label>
+                                    <input type="text" class="form-control" id="citizen_id" name="citizen_id" required placeholder="Nhập CCCD">
+                                </div>
+                            </div>
+
                             <div class="col-md-6">
                                 <div class="form-group">
                                     <label class="form-label">
                                         <i class="fas fa-id-card me-2"></i>Tài khoản sẽ được tạo
                                     </label>
-                                    <div class="account-preview">
-                                        <div class="row g-2 text-center">
-                                            <div class="col-6">
-                                                <small class="text-muted d-block">Username</small>
-                                                <strong><span id="preview-username">-</span></strong>
-                                            </div>
-                                            <div class="col-6">
-                                                <small class="text-muted d-block">Password</small>
-                                                <strong><span id="preview-password">-</span></strong>
-                                            </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="account-preview">
+                                    <div class="row g-2 text-center">
+                                        <div class="col-6">
+                                            <small class="text-muted d-block">Tài khoản</small>
+                                            <strong><span id="preview-username">-</span></strong>
+                                        </div>
+                                        <div class="col-6">
+                                            <small class="text-muted d-block">Mật khẩu</small>
+                                            <strong><span id="preview-password">-</span></strong>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
                             <!-- Địa chỉ -->
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label for="province" class="form-label">
-                                        <i class="fas fa-map-marker-alt me-2"></i>Tỉnh/Thành phố *
-                                    </label>
-                                    <select class="form-select" id="province" name="province" required>
-                                        <option value="">Chọn Tỉnh/Thành phố</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label for="ward" class="form-label">
-                                        <i class="fas fa-map-pin me-2"></i>Phường/Xã *
-                                    </label>
-                                    <select class="form-select" id="ward" name="ward" required disabled>
-                                        <option value="">Chọn Phường/Xã</option>
-                                    </select>
+                            <div class="col-12">
+                                <div class="row g-2 align-items-end">
+                                    <div class="col-md-6">
+                                        <div class="form-group mb-1">
+                                            <label for="province" class="form-label">
+                                                <i class="fas fa-map-marker-alt me-2"></i>Tỉnh/Thành phố *
+                                            </label>
+                                            <select class="form-select" id="province" name="province" required>
+                                                <option value="">Chọn Tỉnh/Thành phố</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group mb-1">
+                                            <label for="ward" class="form-label">
+                                                <i class="fas fa-map-pin me-2"></i>Phường/Xã *
+                                            </label>
+                                            <select class="form-select" id="ward" name="ward" required disabled>
+                                                <option value="">Chọn Phường/Xã</option>
+                                            </select>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                             <div class="col-12">
-                                <div class="form-group">
+                                <div class="form-group mb-2">
                                     <label for="address" class="form-label">
                                         <i class="fas fa-home me-2"></i>Địa chỉ chi tiết *
                                     </label>
@@ -329,7 +346,7 @@
                             </div>
                         </div>
 
-                        <div class="mt-4">
+                        <div class="mt-2">
                             <button type="submit" class="btn btn-primary w-100">
                                 <i class="fas fa-user-plus me-2"></i>Đăng ký tài khoản
                             </button>
@@ -341,10 +358,6 @@
                             <a href="{% url 'login' %}" class="text-link">
                                 <i class="fas fa-sign-in-alt me-1"></i>Đã có tài khoản? Đăng nhập ngay
                             </a>
-                        </p>
-                        <p class="text-muted small" style="font-size: 0.75rem; margin-bottom: 0;">
-                            <i class="fas fa-info-circle me-1"></i>
-                            Bằng việc đăng ký, bạn đồng ý với các điều khoản sử dụng của chúng tôi
                         </p>
                     </div>
                 </div>
@@ -490,6 +503,16 @@ document.getElementById('signup-form').addEventListener('submit', async (e) => {
         return;
     }
 
+    // Validate citizen ID
+    const citizenId = document.getElementById('citizen_id').value.trim();
+    const cccdRegex = /^\d{12}$/; // chỉ CCCD 12 số
+    if (!cccdRegex.test(citizenId)) {
+        showFloatingNotification('CCCD không hợp lệ (phải 12 số)', 'danger');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+        return;
+    }
+
     // Generate username and password
     const phoneLast3 = phoneNumber.slice(-3);
     const username = phoneNumber;
@@ -510,6 +533,7 @@ document.getElementById('signup-form').addEventListener('submit', async (e) => {
         password: password,
         password_confirm: password,
         phone_number: phoneNumber,
+        citizen_id: citizenId,
         date_of_birth: document.getElementById('date_of_birth').value,
         gender: document.getElementById('gender').value,
         user_type: 'PATIENT',
@@ -526,6 +550,26 @@ document.getElementById('signup-form').addEventListener('submit', async (e) => {
     });
 
     try {
+        // Kiểm tra trùng số điện thoại và CCCD trước khi gửi
+        const dupMsgs = [];
+        try {
+            const resPhone = await axios.get('/api/users/?search=' + encodeURIComponent(phoneNumber));
+            const arr = (resPhone.data.results || resPhone.data || []);
+            const foundPhone = arr.some(u => String(u.username) === String(phoneNumber) || String(u.phone_number||'') === String(phoneNumber));
+            if (foundPhone) dupMsgs.push('Số điện thoại đã tồn tại.');
+        } catch (e) { /* ignore network */ }
+        try {
+            const resPatients = await axios.get('/api/patients/?search=' + encodeURIComponent(citizenId));
+            const foundCccd = (resPatients.data.results || resPatients.data || []).some(p => String(p.citizen_id) === String(citizenId));
+            if (foundCccd) dupMsgs.push('CCCD đã tồn tại.');
+        } catch (e) { /* ignore */ }
+        if (dupMsgs.length) {
+            showFloatingNotification(dupMsgs.join('<br/>'), 'danger', 'fas fa-times-circle', 7000);
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+            return;
+        }
+
         const response = await axios.post('/api/auth/register/', payload);
         const data = response.data;
 
@@ -547,13 +591,14 @@ document.getElementById('signup-form').addEventListener('submit', async (e) => {
             localStorage.setItem('user_data', JSON.stringify(data.user));
         }
 
-        // Show success message
-        showFloatingNotification('Tài khoản đã được tạo thành công!', 'success', 'fas fa-check-circle', 5000);
+        // Popup góc phải thông báo tài khoản/mật khẩu
+        try {
+            const toastMsg = `Tạo tài khoản thành công.\nTài khoản: <strong>${username}</strong>\nMật khẩu: <strong>${password}</strong>`;
+            showFloatingNotification(toastMsg, 'success', 'fas fa-user-check', 6000);
+        } catch (e) { /* noop */ }
 
-        // Redirect after short delay
-        setTimeout(() => {
-            window.location.replace('/dashboard/');
-        }, 2000);
+        // Redirect nhanh tới cổng bệnh nhân (đường dẫn ngắn)
+        window.location.replace('/portal/');
 
     } catch (error) {
         let message = 'Đăng ký thất bại';

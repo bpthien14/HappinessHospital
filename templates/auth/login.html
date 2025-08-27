@@ -266,7 +266,17 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
         localStorage.setItem('refresh_token', data.refresh);
         localStorage.setItem('user_data', JSON.stringify(data.user));
 
-        window.location.replace('/dashboard/');
+        // Redirect theo loại người dùng
+        try {
+            const userType = (data.user && data.user.user_type) || null;
+            if (userType === 'PATIENT') {
+                window.location.replace('/portal/');
+            } else {
+                window.location.replace('/dashboard/');
+            }
+        } catch (e) {
+            window.location.replace('/dashboard/');
+        }
         
     } catch (error) {
         console.error('❌ Login failed:', error);

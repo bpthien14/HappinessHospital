@@ -5,6 +5,10 @@ urlpatterns = [
     path('login/', views.login_view, name='login'),
     path('signup/', views.signup_view, name='signup'),
     path('dashboard/', views.dashboard_view, name='dashboard'),
+    path('portal/', views.patient_portal_view, name='portal'),
+    # Legacy redirects to avoid 404
+    path('patient-portal/', views.portal_redirect_view, name='patient_portal_legacy_dash'),
+    path('patient_portal/', views.portal_redirect_view, name='patient_portal_legacy_underscore'),
     path('patients/', views.patient_list_view, name='patient_list'),
     path('patients/<uuid:patient_id>/', views.patient_detail_view, name='patient_detail'),
     path('doctors/', views.doctor_list_view, name='doctor_list'),

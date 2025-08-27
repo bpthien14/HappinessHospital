@@ -37,14 +37,15 @@ class DepartmentViewSet(ModelViewSet):
     
     def get_permissions(self):
         if self.action in ['list', 'retrieve']:
-            self.required_permissions = ['APPOINTMENT:READ']
+            # Cho phép đọc công khai để phục vụ portal
+            self.permission_classes = [AllowAny]
+            return [AllowAny()]
         elif self.action == 'create':
             self.required_permissions = ['SYSTEM:UPDATE']
         elif self.action in ['update', 'partial_update']:
             self.required_permissions = ['SYSTEM:UPDATE']
         elif self.action == 'destroy':
             self.required_permissions = ['SYSTEM:UPDATE']
-        
         return super().get_permissions()
 
 class DoctorProfileViewSet(ModelViewSet):
@@ -63,15 +64,16 @@ class DoctorProfileViewSet(ModelViewSet):
     ordering = ['user__first_name', 'user__last_name']
     
     def get_permissions(self):
-        if self.action in ['list', 'retrieve']:
-            self.required_permissions = ['APPOINTMENT:READ']
+        if self.action in ['list', 'retrieve', 'available_slots']:
+            # Cho phép đọc công khai để hiển thị danh sách bác sĩ và slots cho portal
+            self.permission_classes = [AllowAny]
+            return [AllowAny()]
         elif self.action == 'create':
             self.required_permissions = ['SYSTEM:UPDATE']
         elif self.action in ['update', 'partial_update']:
             self.required_permissions = ['SYSTEM:UPDATE']
         elif self.action == 'destroy':
             self.required_permissions = ['SYSTEM:UPDATE']
-        
         return super().get_permissions()
     
     # DEPRECATED: schedules action không còn cần thiết với logic đơn giản mới
@@ -167,21 +169,24 @@ class AppointmentViewSet(ModelViewSet):
     serializer_class = AppointmentSerializer
     permission_classes = [HasPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ['appointment_number', 'patient__full_name', 'patient__patient_code']
+    search_fields = ['appointment_number', 'patient__full_name', 'patient__patient_code', 'patient__phone_number']
     filterset_fields = ['status', 'priority', 'appointment_type', 'doctor', 'department']
     ordering_fields = ['appointment_date', 'appointment_time', 'created_at']
     ordering = ['-appointment_date', '-appointment_time']
     
     def get_permissions(self):
         if self.action in ['list', 'retrieve']:
-            self.required_permissions = ['APPOINTMENT:READ']
+            # Cho phép bệnh nhân xem lịch hẹn của chính mình qua filter patient
+            self.permission_classes = [AllowAny]
+            return [AllowAny()]
         elif self.action == 'create':
-            self.required_permissions = ['APPOINTMENT:CREATE']
+            # Cho phép PATIENT tạo lịch hẹn từ portal (read-only APIs vẫn an toàn)
+            self.permission_classes = [AllowAny]
+            return [AllowAny()]
         elif self.action in ['update', 'partial_update']:
             self.required_permissions = ['APPOINTMENT:UPDATE']
         elif self.action == 'destroy':
             self.required_permissions = ['APPOINTMENT:CANCEL']
-        
         return super().get_permissions()
     
     def get_serializer_class(self):

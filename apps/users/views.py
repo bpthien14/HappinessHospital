@@ -9,6 +9,7 @@ from django.contrib.auth import update_session_auth_hash
 from django.utils import timezone
 
 from .models import User, Role, Permission, UserRole, AuditLog
+from apps.patients.models import Patient
 from .serializers import (
     UserSerializer, UserCreateSerializer, LoginSerializer,
     ChangePasswordSerializer, RoleSerializer, PermissionSerializer,
@@ -50,6 +51,22 @@ def register(request):
     data = request.data.copy()
     if 'user_type' not in data or not data.get('user_type'):
         data['user_type'] = 'PATIENT'
+
+    # Pre-check uniqueness for phone (username) and citizen_id (patient)
+    phone_number = data.get('phone_number') or data.get('username')
+    citizen_id = data.get('citizen_id')
+
+    # Check duplicate username by phone and phone_number field
+    if phone_number:
+        if User.objects.filter(username=str(phone_number)).exists() or \
+           User.objects.filter(phone_number=str(phone_number)).exists():
+            return Response({'phone_number': ['Số điện thoại đã được đăng ký tài khoản.']}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Check duplicate patient citizen_id if provided
+    if citizen_id:
+        if Patient.objects.filter(citizen_id=str(citizen_id)).exists():
+            return Response({'citizen_id': ['CCCD/CMND đã tồn tại trong hệ thống.']}, status=status.HTTP_400_BAD_REQUEST)
+
     serializer = UserCreateSerializer(data=data)
     if serializer.is_valid():
         user = serializer.save()
@@ -65,6 +82,35 @@ def register(request):
             response_status=201
         )
         
+        # Create Patient record right after user creation (best-effort)
+        try:
+            # Map fields from registration payload
+            full_name = f"{user.first_name} {user.last_name}".strip() or user.username
+            patient_payload = {
+                'full_name': full_name,
+                'date_of_birth': data.get('date_of_birth'),
+                'gender': data.get('gender'),
+                'phone_number': phone_number or '',
+                'email': data.get('email') or None,
+                'address': data.get('address') or '',
+                'ward': data.get('ward') or '',
+                'province': data.get('province') or '',
+                'citizen_id': citizen_id or '',
+                'created_by': user,
+                'updated_by': user,
+            }
+
+            # Normalize missing optional fields to None when empty
+            for key in ['email']:
+                if not patient_payload[key]:
+                    patient_payload[key] = None
+
+            # Create Patient (will raise if invalid)
+            Patient.objects.create(**patient_payload)
+        except Exception:
+            # Do not fail registration if patient creation fails
+            pass
+
         # Generate tokens
         refresh = RefreshToken.for_user(user)
         

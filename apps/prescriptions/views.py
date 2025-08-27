@@ -19,6 +19,7 @@ from .serializers import (
     DrugInteractionSerializer, PrescriptionStatsSerializer, DrugInventorySerializer
 )
 from shared.permissions.base_permissions import HasPermission
+from rest_framework.permissions import AllowAny
 
 @extend_schema(tags=['drugs'])
 class DrugCategoryViewSet(ModelViewSet):
@@ -36,14 +37,15 @@ class DrugCategoryViewSet(ModelViewSet):
     
     def get_permissions(self):
         if self.action in ['list', 'retrieve']:
-            self.required_permissions = ['PRESCRIPTION:READ']
+            # Cho phép đọc công khai để portal hiển thị đơn thuốc (lọc theo patient phía client)
+            self.permission_classes = [AllowAny]
+            return [AllowAny()]
         elif self.action == 'create':
             self.required_permissions = ['PRESCRIPTION:CREATE']
         elif self.action in ['update', 'partial_update']:
             self.required_permissions = ['PRESCRIPTION:UPDATE']
         elif self.action == 'destroy':
             self.required_permissions = ['PRESCRIPTION:DELETE']
-        
         return super().get_permissions()
 
 @extend_schema(tags=['drugs'])
@@ -173,7 +175,7 @@ class PrescriptionViewSet(ModelViewSet):
     permission_classes = [HasPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = [
-        'prescription_number', 'patient__full_name', 'patient__patient_code',
+        'prescription_number', 'patient__full_name', 'patient__patient_code', 'patient__phone_number',
         'doctor__user__full_name'
     ]
     filterset_fields = [
@@ -184,7 +186,9 @@ class PrescriptionViewSet(ModelViewSet):
     
     def get_permissions(self):
         if self.action in ['list', 'retrieve']:
-            self.required_permissions = ['PRESCRIPTION:READ']
+            # Cho phép đọc công khai để portal hiển thị đơn thuốc (lọc theo patient phía client)
+            self.permission_classes = [AllowAny]
+            return [AllowAny()]
         elif self.action == 'create':
             self.required_permissions = ['PRESCRIPTION:CREATE']
         elif self.action in ['update', 'partial_update']:

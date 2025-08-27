@@ -116,22 +116,18 @@ function setupAxiosInterceptors() {
     axios.interceptors.response.use(
         response => response,
         async error => {
-            const original = error.config;
+            const original = error.config || {};
             
+            // Auto refresh for 401
             if (error.response?.status === 401 && !original._retry) {
                 original._retry = true;
-                
                 try {
                     const refreshToken = localStorage.getItem('refresh_token');
                     if (!refreshToken) {
                         logout();
                         return Promise.reject(error);
                     }
-                    
-                    const response = await axios.post('/api/auth/refresh/', {
-                        refresh: refreshToken
-                    });
-                    
+                    const response = await axios.post('/api/auth/refresh/', { refresh: refreshToken });
                     localStorage.setItem('access_token', response.data.access);
                     return axios(original);
                 } catch (refreshError) {
@@ -139,6 +135,17 @@ function setupAxiosInterceptors() {
                     return Promise.reject(refreshError);
                 }
             }
+
+            // Popup lỗi góc phải cho mọi lỗi còn lại (trừ khi tắt bằng config.silent)
+            try {
+                if (!original.silent) {
+                    const status = error.response?.status;
+                    const data = error.response?.data;
+                    const level = status && status >= 500 ? 'danger' : 'warning';
+                    const msg = friendlyError(data, `Yêu cầu thất bại${status ? ' ('+status+')' : ''}`);
+                    showAlert(msg, level);
+                }
+            } catch (e) { /* noop */ }
             
             return Promise.reject(error);
         }
@@ -219,41 +226,46 @@ function toggleNavbarByAuth() {
 }
 
 function showAlert(message, type = 'success') {
+    // Hiển thị popup góc phải (thống nhất trải nghiệm)
+    try {
+        HospitalApp.showAlert(message, type);
+        return;
+    } catch (e) { /* fallback below */ }
     const alertDiv = document.createElement('div');
-    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    alertDiv.style.cssText = 'top: 16px; right: 16px; z-index: 1060; min-width: 320px;';
     alertDiv.innerHTML = `
         ${message}
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     `;
+    document.body.appendChild(alertDiv);
+    setTimeout(() => { if (alertDiv.parentNode) alertDiv.remove(); }, 5000);
+}
 
-    const container = document.querySelector('.container-fluid') || 
-                     document.querySelector('.container') || 
-                     document.querySelector('main') ||
-                     document.body;
-    
-    if (container) {
-        try {
-            if (container === document.body) {
-                container.appendChild(alertDiv);
-            } else {
-                container.insertBefore(alertDiv, container.firstChild);
-            }
-            
-            // Auto-dismiss after 5 seconds
-            setTimeout(() => {
-                if (alertDiv.parentNode) {
-                    alertDiv.remove();
-                }
-            }, 5000);
-        } catch (error) {
-            console.error('Error inserting alert:', error);
-            // Fallback: append vào body
-            document.body.appendChild(alertDiv);
-        }
-    } else {
-        console.warn('No container found for alert, appending to body');
-        document.body.appendChild(alertDiv);
-    }
+// Biến đổi lỗi kỹ thuật -> thông điệp thân thiện
+function friendlyError(data, fallback){
+    try {
+        if (!data) return fallback || 'Đã xảy ra lỗi';
+        if (typeof data === 'string') return data;
+        const labelMap = {
+            detail: 'Thông báo',
+            non_field_errors: 'Lỗi',
+            chief_complaint: 'Lý do khám',
+            appointment_time: 'Giờ khám',
+            appointment_date: 'Ngày khám',
+            doctor: 'Bác sĩ',
+            patient: 'Bệnh nhân',
+            username: 'Tài khoản',
+            phone_number: 'Số điện thoại',
+            citizen_id: 'CCCD'
+        };
+        const parts = [];
+        Object.keys(data).forEach(k => {
+            const v = Array.isArray(data[k]) ? data[k].join(', ') : data[k];
+            parts.push(`${labelMap[k] || k}: ${v}`);
+        });
+        return parts.join('; ') || fallback || 'Đã xảy ra lỗi';
+    } catch(e){ return fallback || 'Đã xảy ra lỗi'; }
 }
 
 function formatDate(dateString) {

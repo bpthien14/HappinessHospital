@@ -9,6 +9,10 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, Sp
 def home(request):
     return redirect('login')
 
+def well_known_handler(request, path=''):
+    # Handle Chrome DevTools and other .well-known requests silently
+    return HttpResponse('', status=204)
+
 urlpatterns = [
     path('', home, name='home'),
     path('admin/', admin.site.urls),
@@ -20,6 +24,10 @@ urlpatterns = [
 
     # Frontend views
     path('', include('frontend.urls')),
+    
+    # Handle .well-known requests (Chrome DevTools, etc.)
+    path('.well-known/<path:path>', well_known_handler),
+    path('.well-known/', well_known_handler),
     
     # API Documentation
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),

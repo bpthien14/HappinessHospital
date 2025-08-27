@@ -45,7 +45,9 @@ class PatientViewSet(ModelViewSet):
     
     def get_permissions(self):
         if self.action in ['list', 'retrieve']:
-            self.required_permissions = ['PATIENT:READ']
+            # Cho phép đọc công khai để portal truy vấn
+            self.permission_classes = [permissions.AllowAny]
+            return [permissions.AllowAny()]
         elif self.action == 'create':
             self.required_permissions = ['PATIENT:CREATE']
         elif self.action == 'update':

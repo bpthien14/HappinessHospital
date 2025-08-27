@@ -1,0 +1,1036 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Portal Bệnh nhân{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Ẩn navbar mặc định và loại bỏ padding */
+    .navbar { display: none !important; }
+    main { padding: 0 !important; margin: 0 !important; }
+    body { margin: 0; padding: 0; }
+    .container-fluid { padding: 0; }
+    
+    .portal-topbar {
+        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+        color: white;
+        padding: 1rem 0;
+        border-bottom: 2px solid #0056b3;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 1030;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .portal-topbar h4 {
+        margin: 0;
+        font-weight: 600;
+    }
+    
+    .portal-nav .btn {
+        margin: 0 0.25rem;
+        border-radius: 20px;
+        padding: 0.5rem 1rem;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+    
+    .portal-nav .btn.active {
+        background-color: white;
+        color: #007bff;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .portal-nav .btn:not(.active) {
+        background-color: rgba(255,255,255,0.1);
+        color: white;
+        border: 1px solid rgba(255,255,255,0.3);
+    }
+    
+    .portal-nav .btn:not(.active):hover {
+        background-color: rgba(255,255,255,0.2);
+    }
+    
+    .main-content {
+        min-height: calc(100vh - 140px);
+        padding: 140px 0 2rem 0;
+        background-color: #f8f9fa;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="portal-topbar">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center">
+            <h4><i class="fas fa-hospital-user me-2"></i>Cổng dịch vụ bệnh nhân</h4>
+            <div class="d-flex align-items-center">
+                <span class="me-3">Xin chào, <span id="user-name">Bệnh nhân</span></span>
+                <button class="btn btn-outline-light btn-sm" id="pp-logout">
+                    <i class="fas fa-sign-out-alt me-2"></i>Đăng xuất
+                </button>
+            </div>
+        </div>
+        <div class="portal-nav mt-3 d-flex justify-content-center">
+            <button class="btn active" data-tab="booking">
+                <i class="fas fa-calendar-plus me-2"></i>Đặt khám
+            </button>
+            <button class="btn" data-tab="history">
+                <i class="fas fa-history me-2"></i>Lịch sử đặt khám
+            </button>
+            <button class="btn" data-tab="payment">
+                <i class="fas fa-credit-card me-2"></i>Thanh toán viện phí
+            </button>
+            <button class="btn" data-tab="profile">
+                <i class="fas fa-user-edit me-2"></i>Hồ sơ cá nhân
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="main-content">
+    <div class="container">
+        <!-- Tab Đặt khám -->
+        <div id="booking-content" class="tab-content active">
+            <form id="booking-form" novalidate>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header bg-primary text-white">
+                            <h6 class="mb-0"><i class="fas fa-hospital me-2"></i>Chọn khoa & bác sĩ</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-group mb-3">
+                                <label for="dept-select" class="form-label">Khoa *</label>
+                                <select id="dept-select" class="form-select" required>
+                                    <option value="">Chọn khoa khám</option>
+                                </select>
+                            </div>
+                            <div class="form-group mb-3">
+                                <label for="doctor-select" class="form-label">Bác sĩ *</label>
+                                <select id="doctor-select" class="form-select" disabled required>
+                                    <option value="">Chọn bác sĩ</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header bg-success text-white">
+                            <h6 class="mb-0"><i class="fas fa-calendar-alt me-2"></i>Chọn ngày & giờ</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-group mb-3">
+                                <label for="appt-date" class="form-label">Ngày khám *</label>
+                                <input type="date" id="appt-date" class="form-control" required>
+                            </div>
+                            <div class="form-group mb-3">
+                                <label for="time-select" class="form-label">Khung giờ khả dụng *</label>
+                                <select id="time-select" class="form-select" required disabled>
+                                    <option value="">Vui lòng chọn bác sĩ và ngày</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header bg-info text-white">
+                            <h6 class="mb-0"><i class="fas fa-notes-medical me-2"></i>Thông tin đặt khám</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group mb-3">
+                                        <label for="appt-type" class="form-label">Loại khám</label>
+                                        <select id="appt-type" class="form-select">
+                                            <option value="NEW">Khám mới</option>
+                                            <option value="FOLLOW_UP">Tái khám</option>
+                                            <option value="CONSULTATION">Tư vấn</option>
+                                            <option value="CHECKUP">Khám sức khỏe</option>
+                                            <option value="EMERGENCY">Cấp cứu</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group mb-3">
+                                        <label for="appt-priority" class="form-label">Mức ưu tiên</label>
+                                        <select id="appt-priority" class="form-select">
+                                            <option value="NORMAL">Bình thường</option>
+                                            <option value="URGENT">Khẩn cấp</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <div class="form-group mb-3">
+                                        <label for="complaint" class="form-label">Triệu chứng/Lý do khám *</label>
+                                        <textarea id="complaint" class="form-control" rows="3" 
+                                            placeholder="Mô tả triệu chứng chính..."></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="text-end">
+                                <button type="submit" class="btn btn-primary" id="submit-booking" disabled>
+                                    <i class="fas fa-calendar-check me-2"></i>Đặt lịch khám
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            </form>
+        </div>
+
+        <!-- Tab Lịch sử -->
+        <div id="history-content" class="tab-content" style="display: none;">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h6 class="mb-0"><i class="fas fa-history me-2"></i>Lịch sử đặt khám</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="text-center">Ngày khám</th>
+                                    <th class="text-center">Bác sĩ</th>
+                                    <th class="text-center">Khoa</th>
+                                    <th class="text-center">Phòng khám</th>
+                                    <th class="text-center">Trạng thái</th>
+                                    <th class="text-center">Ghi chú</th>
+                                </tr>
+                            </thead>
+                            <tbody id="history-tbody">
+                                <tr><td colspan="6" class="text-center">Đang tải...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Thanh toán -->
+        <div id="payment-content" class="tab-content" style="display: none;">
+            <div class="card">
+                <div class="card-header bg-warning text-dark">
+                    <h6 class="mb-0"><i class="fas fa-credit-card me-2"></i>Thanh toán viện phí</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Ngày</th>
+                                    <th>Nội dung</th>
+                                    <th>Số tiền</th>
+                                    <th>Trạng thái</th>
+                                    <th>Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody id="payment-tbody">
+                                <tr><td colspan="5" class="text-center">Đang tải...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Hồ sơ -->
+        <div id="profile-content" class="tab-content" style="display: none;">
+            <form id="profile-form">
+                <!-- Thông tin cơ bản -->
+                <div class="card mb-3">
+                    <div class="card-header bg-primary text-white">
+                        <h6 class="mb-0"><i class="fas fa-user me-2"></i>Thông tin cơ bản</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Họ và tên</label>
+                                <input type="text" class="form-control" id="pp-fullname">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold">Ngày sinh</label>
+                                <input type="date" class="form-control" id="pp-dob">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold">Giới tính</label>
+                                <select class="form-select" id="pp-gender">
+                                    <option value="M">Nam</option>
+                                    <option value="F">Nữ</option>
+                                    <option value="O">Khác</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Số điện thoại</label>
+                                <input type="tel" class="form-control" id="pp-phone">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Email</label>
+                                <input type="email" class="form-control" id="pp-email">
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label fw-bold">CCCD</label>
+                                <input type="text" class="form-control" id="pp-citizen">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Địa chỉ -->
+                <div class="card mb-3">
+                    <div class="card-header bg-info text-white">
+                        <h6 class="mb-0"><i class="fas fa-map-marker-alt me-2"></i>Địa chỉ</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Tỉnh/TP</label>
+                                <select class="form-select" id="pp-province">
+                                    <option value="">Chọn Tỉnh/Thành phố</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Phường/Xã</label>
+                                <select class="form-select" id="pp-ward" disabled>
+                                    <option value="">Chọn Phường/Xã</option>
+                                </select>
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label fw-bold">Địa chỉ chi tiết</label>
+                                <input type="text" class="form-control" id="pp-address" placeholder="Số nhà, đường...">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Thông tin y tế -->
+                <div class="card mb-3">
+                    <div class="card-header bg-success text-white">
+                        <h6 class="mb-0"><i class="fas fa-heartbeat me-2"></i>Thông tin y tế</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Nhóm máu</label>
+                                <select class="form-select" id="pp-blood">
+                                    <option value="">Chọn nhóm máu</option>
+                                    <option value="A+">A+</option>
+                                    <option value="A-">A-</option>
+                                    <option value="B+">B+</option>
+                                    <option value="B-">B-</option>
+                                    <option value="AB+">AB+</option>
+                                    <option value="AB-">AB-</option>
+                                    <option value="O+">O+</option>
+                                    <option value="O-">O-</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Dị ứng</label>
+                                <textarea class="form-control" id="pp-allergies" rows="2" placeholder="Ghi chú dị ứng nếu có..."></textarea>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Bệnh mãn tính</label>
+                                <textarea class="form-control" id="pp-chronic" rows="2" placeholder="Ghi chú bệnh mãn tính nếu có..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-end">
+                    <button type="button" class="btn btn-primary" id="pp-save-profile">
+                        <i class="fas fa-save me-2"></i>Lưu thay đổi
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Tab management
+document.addEventListener('click', function(e) {
+    if (e.target.closest('.portal-nav .btn')) {
+        const btn = e.target.closest('.portal-nav .btn');
+        const tabName = btn.dataset.tab;
+        
+        // Update buttons
+        document.querySelectorAll('.portal-nav .btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        // Update content
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.style.display = 'none';
+        });
+        document.getElementById(tabName + '-content').style.display = 'block';
+
+        // Load data for specific tabs
+        if (tabName === 'history') loadMyAppointments();
+        else if (tabName === 'payment') loadMyPayments();
+        else if (tabName === 'profile') loadMyProfile();
+    }
+});
+
+// Logout button - no browser confirmation
+document.getElementById('pp-logout').addEventListener('click', function() {
+    if (window.HospitalApp && window.HospitalApp.logout) {
+        HospitalApp.logout();
+    } else {
+        // Fallback logout
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        localStorage.removeItem('user_data');
+        window.location.replace('/login/');
+    }
+});
+
+// Helper functions
+function getCurrentUser() {
+    try {
+        return JSON.parse(localStorage.getItem('user_data') || '{}');
+    } catch (e) {
+        return {};
+    }
+}
+
+function friendlyError(data, fallback) {
+    if (window.friendlyError) return window.friendlyError(data, fallback);
+    return fallback || 'Đã xảy ra lỗi';
+}
+
+function showAlert(message, type = 'success') {
+    // Sử dụng HospitalApp.showAlert nếu có, nếu không thì fallback
+    try {
+        if (window.HospitalApp && window.HospitalApp.showAlert) {
+            window.HospitalApp.showAlert(message, type);
+            return;
+        }
+        } catch (e) { /* fallback below */ }
+
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    alertDiv.style.cssText = 'top: 16px; right: 16px; z-index: 1060; min-width: 320px;';
+    alertDiv.innerHTML = `
+        <strong>${type === 'success' ? 'Thành công!' : type === 'danger' ? 'Lỗi!' : 'Thông báo!'}</strong> ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.body.appendChild(alertDiv);
+    setTimeout(() => { if (alertDiv.parentNode) alertDiv.remove(); }, 5000);
+}
+
+// Helper function to get Vietnam time
+function getVietnamTime() {
+    const now = new Date();
+    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+    const vietnamTime = new Date(utc + (7 * 3600000)); // UTC+7
+    return vietnamTime;
+}
+
+// Helper function to get Vietnam date string
+function getVietnamDateString() {
+    const vn = getVietnamTime();
+    const year = vn.getFullYear();
+    const month = String(vn.getMonth() + 1).padStart(2, '0');
+    const day = String(vn.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+// Initialize function
+async function initializePortal() {
+    try {
+        // Update user name
+        const user = getCurrentUser();
+        document.getElementById('user-name').textContent = user.full_name || user.username || 'Bệnh nhân';
+        
+        // Set default appointment date to today (Vietnam timezone)
+        const today = getVietnamDateString();
+        document.getElementById('appt-date').value = today;
+        
+
+        
+        // Load initial data
+        await loadDepartments();
+        await loadProvinces();
+        
+    } catch (error) {
+        console.error('Initialization error:', error);
+    }
+}
+
+// Initialize when ready
+if (window.HospitalApp && window.HospitalApp.onAxiosReady) {
+    HospitalApp.onAxiosReady(initializePortal);
+} else {
+    // Initialize directly if HospitalApp is not available
+    initializePortal();
+}
+
+// Load departments
+async function loadDepartments() {
+    try {
+        const response = await axios.get('/api/departments/');
+        const departments = response.data.results || response.data;
+        const select = document.getElementById('dept-select');
+        select.innerHTML = '<option value="">Chọn khoa khám</option>';
+        departments.forEach(dept => {
+            const option = document.createElement('option');
+            option.value = dept.id;
+            option.textContent = dept.name;
+            select.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Error loading departments:', error);
+    }
+}
+
+// Load doctors by department
+document.getElementById('dept-select').addEventListener('change', async function() {
+    const deptId = this.value;
+    const doctorSelect = document.getElementById('doctor-select');
+    
+    // Reset time slots and validation when department changes
+    document.getElementById('time-select').innerHTML = '<option value="">Vui lòng chọn bác sĩ và ngày</option>';
+    document.getElementById('time-select').disabled = true;
+    
+    if (!deptId) {
+        doctorSelect.innerHTML = '<option value="">Chọn bác sĩ</option>';
+        doctorSelect.disabled = true;
+        validateBookingForm();
+        return;
+    }
+    
+    try {
+        const response = await axios.get(`/api/doctors/?department=${deptId}`);
+        const doctors = response.data.results || response.data;
+        
+        doctorSelect.innerHTML = '<option value="">Chọn bác sĩ</option>';
+        
+        if (!doctors || doctors.length === 0) {
+            doctorSelect.innerHTML = '<option value="">Không có bác sĩ nào</option>';
+            doctorSelect.disabled = true;
+            return;
+        }
+        
+        doctors.forEach(doctor => {
+            const option = document.createElement('option');
+            option.value = doctor.id;
+
+            let doctorName = 'Tên không rõ';
+            if (doctor.doctor_name) {
+                doctorName = doctor.doctor_name;
+            } else if (doctor.user && doctor.user.full_name) {
+                doctorName = doctor.user.full_name;
+            } else if (doctor.full_name) {
+                doctorName = doctor.full_name;
+            } else if (doctor.user && (doctor.user.first_name || doctor.user.last_name)) {
+                doctorName = `${doctor.user.first_name || ''} ${doctor.user.last_name || ''}`.trim();
+            }
+            
+            const specialization = doctor.specialization || 'Chuyên khoa không rõ';
+            option.textContent = `${doctorName} - ${specialization}`;
+            doctorSelect.appendChild(option);
+        });
+        doctorSelect.disabled = false;
+    } catch (error) {
+        console.error('Error loading doctors:', error);
+        showAlert('Lỗi tải danh sách bác sĩ', 'warning');
+    }
+});
+
+// Load time slots
+async function loadTimeSlots() {
+    const doctorId = document.getElementById('doctor-select').value;
+    const date = document.getElementById('appt-date').value;
+    const timeSelect = document.getElementById('time-select');
+    
+    timeSelect.innerHTML = '<option value="">Đang tải...</option>';
+    timeSelect.disabled = true;
+    
+    if (!doctorId || !date) {
+        timeSelect.innerHTML = '<option value="">Vui lòng chọn bác sĩ và ngày</option>';
+        return;
+    }
+    
+    try {
+        const response = await axios.get(`/api/doctors/${doctorId}/available_slots/?date=${date}`);
+        const slots = response.data;
+        
+        timeSelect.innerHTML = '<option value="">Chọn khung giờ khám</option>';
+        
+        if (slots.length === 0) {
+            timeSelect.innerHTML = '<option value="">Không có lịch khả dụng</option>';
+            return;
+        }
+        
+        // Filter slots based on 15-minute advance booking rule (Vietnam timezone)
+        const vietnamNow = getVietnamTime();
+        const selectedDate = new Date(date + 'T00:00:00'); // Parse as local date
+        const isToday = selectedDate.toDateString() === vietnamNow.toDateString();
+        
+
+        
+        const availableSlots = slots.filter(slot => {
+            if (!isToday) return true; // Future dates are always available
+            
+            // Parse slot time (format: "HH:MM") in Vietnam timezone
+            const [hours, minutes] = slot.time.split(':').map(Number);
+            const slotDateTime = new Date(vietnamNow);
+            slotDateTime.setHours(hours, minutes, 0, 0);
+            
+            // Add 15 minutes buffer to current Vietnam time
+            const minBookingTime = new Date(vietnamNow.getTime() + 15 * 60 * 1000);
+            
+            const isAvailable = slotDateTime >= minBookingTime;
+
+            return isAvailable;
+        });
+        
+        if (availableSlots.length === 0) {
+            timeSelect.innerHTML = '<option value="">Không còn lịch khả dụng hôm nay (cần đặt trước 15 phút)</option>';
+            return;
+        }
+        
+        availableSlots.forEach(slot => {
+            const option = document.createElement('option');
+            option.value = slot.time;
+            option.textContent = slot.time;
+            timeSelect.appendChild(option);
+        });
+        
+        timeSelect.disabled = false;
+    } catch (error) {
+        timeSelect.innerHTML = '<option value="">Lỗi tải lịch khả dụng</option>';
+        console.error('Error loading time slots:', error);
+    }
+}
+
+document.getElementById('doctor-select').addEventListener('change', function() {
+    loadTimeSlots();
+    validateBookingForm();
+});
+document.getElementById('appt-date').addEventListener('change', function() {
+    loadTimeSlots();
+    validateBookingForm();
+});
+
+// Validate booking form and enable/disable submit button
+function validateBookingForm() {
+    const deptSelect = document.getElementById('dept-select');
+    const doctorSelect = document.getElementById('doctor-select');
+    const dateInput = document.getElementById('appt-date');
+    const timeSelect = document.getElementById('time-select');
+    const complaint = document.getElementById('complaint');
+    const submitBtn = document.getElementById('submit-booking');
+    
+    const isValid = deptSelect.value &&
+                   doctorSelect.value &&
+                   dateInput.value &&
+                   timeSelect.value &&
+                   complaint.value.trim();
+
+    submitBtn.disabled = !isValid;
+}
+
+// Add event listeners for form validation
+document.getElementById('dept-select').addEventListener('change', validateBookingForm);
+document.getElementById('time-select').addEventListener('change', validateBookingForm);
+document.getElementById('complaint').addEventListener('input', validateBookingForm);
+
+// Handle form submission
+document.getElementById('booking-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const submitBtn = document.getElementById('submit-booking');
+    if (submitBtn.disabled) {
+        showAlert('Vui lòng điền đầy đủ thông tin bắt buộc', 'warning');
+        return;
+    }
+    
+    // Show loading state
+    submitBtn.disabled = true;
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Đang đặt lịch...';
+    
+    try {
+        const user = getCurrentUser();
+        
+        // Get patient ID from current user
+        let patientId = null;
+        try {
+            const response = await axios.get(`/api/patients/?search=${user.phone_number}`);
+            if (response.data.results && response.data.results.length > 0) {
+                patientId = response.data.results[0].id;
+            }
+        } catch (error) {
+            console.error('Cannot find patient ID:', error);
+            showAlert('Không tìm thấy thông tin bệnh nhân. Vui lòng liên hệ admin.', 'danger');
+            return;
+        }
+        
+        if (!patientId) {
+            showAlert('Không tìm thấy thông tin bệnh nhân. Vui lòng liên hệ admin.', 'danger');
+            return;
+        }
+        
+        const payload = {
+            patient: patientId,
+            doctor: document.getElementById('doctor-select').value,
+            appointment_date: document.getElementById('appt-date').value,
+            appointment_time: document.getElementById('time-select').value,
+            appointment_type: document.getElementById('appt-type').value,
+            priority: document.getElementById('appt-priority').value,
+            chief_complaint: document.getElementById('complaint').value.trim()
+        };
+        
+        // Final validation
+        if (!payload.doctor) {
+            showAlert('Vui lòng chọn bác sĩ', 'warning');
+            return;
+        }
+        if (!payload.appointment_date) {
+            showAlert('Vui lòng chọn ngày khám', 'warning');
+            return;
+        }
+        if (!payload.appointment_time) {
+            showAlert('Vui lòng chọn khung giờ khám', 'warning');
+            return;
+        }
+        if (!payload.chief_complaint) {
+            showAlert('Vui lòng nhập lý do khám', 'warning');
+            return;
+        }
+        
+        // Get JWT token for authenticated request
+        const token = localStorage.getItem('access_token');
+        
+
+        if (!token) {
+            showAlert('Vui lòng đăng nhập lại', 'warning');
+            return;
+        }
+        
+        const response = await axios.post('/api/appointments/', payload, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        // Show success popup
+        // Create simple success popup like other pages
+        const manualAlert = document.createElement('div');
+        manualAlert.className = 'alert alert-success alert-dismissible fade show position-fixed';
+        manualAlert.style.cssText = 'top: 16px; right: 16px; z-index: 1060; min-width: 320px;';
+        manualAlert.innerHTML = `
+            <strong>Thành công!</strong> Đặt lịch khám thành công!
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.body.appendChild(manualAlert);
+
+        // Auto remove after 5 seconds
+        setTimeout(() => {
+            if (manualAlert.parentNode) manualAlert.remove();
+        }, 5000);
+        
+        // Reload appointment history
+        await loadMyAppointments();
+        
+        // Reset form
+        document.getElementById('booking-form').reset();
+        document.getElementById('time-select').innerHTML = '<option value="">Vui lòng chọn bác sĩ và ngày</option>';
+        document.getElementById('time-select').disabled = true;
+        document.getElementById('doctor-select').disabled = true;
+        
+        // Set default date again (Vietnam timezone)
+        const today = getVietnamDateString();
+        document.getElementById('appt-date').value = today;
+        
+        validateBookingForm();
+        
+    } catch (error) {
+        console.error('Appointment booking error:', error);
+        
+        // Parse error and show popup
+        let errorMessage = 'Có lỗi xảy ra khi đặt lịch khám';
+        
+        if (error.response) {
+            const status = error.response.status;
+            const data = error.response.data;
+            
+
+            
+            if (status === 401) {
+                errorMessage = 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.';
+            } else if (status === 400 && data) {
+                // Parse 400 error details
+                if (data.detail) {
+                    errorMessage = `Chi tiết lỗi: ${data.detail}`;
+                } else if (data.non_field_errors) {
+                    errorMessage = `Lỗi chung: ${data.non_field_errors.join(', ')}`;
+                } else {
+                    // Parse field-specific errors
+                    const fieldErrors = [];
+                    for (const [field, errors] of Object.entries(data)) {
+                        if (Array.isArray(errors)) {
+                            fieldErrors.push(`${field}: ${errors.join(', ')}`);
+                        } else if (typeof errors === 'string') {
+                            fieldErrors.push(`${field}: ${errors}`);
+                        }
+                    }
+                    if (fieldErrors.length > 0) {
+                        errorMessage = `Lỗi dữ liệu: ${fieldErrors.join('; ')}`;
+                    } else {
+                        errorMessage = `400 Bad Request: ${JSON.stringify(data)}`;
+                    }
+                }
+            } else if (status === 403) {
+                errorMessage = 'Bạn không có quyền thực hiện thao tác này';
+            } else if (status >= 500) {
+                errorMessage = 'Lỗi server. Vui lòng thử lại sau.';
+            }
+        } else if (error.request) {
+            errorMessage = 'Không thể kết nối đến server. Kiểm tra kết nối mạng.';
+        }
+        
+        // Show error popup
+        console.error('BOOKING ERROR:', errorMessage);
+        showAlert(errorMessage, 'danger');
+    } finally {
+        // Restore button state
+        submitBtn.innerHTML = originalText;
+        validateBookingForm(); // This will set correct disabled state
+    }
+});
+
+// Load appointment history
+async function loadMyAppointments() {
+    const tbody = document.getElementById('history-tbody');
+    try {
+        const user = getCurrentUser();
+        const response = await axios.get(`/api/appointments/?search=${encodeURIComponent(user.phone_number || user.username || '')}`);
+        const appointments = response.data.results || response.data;
+        
+        if (appointments.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Chưa có lịch hẹn nào</td></tr>';
+            return;
+        }
+        
+
+        
+        tbody.innerHTML = '';
+        appointments.forEach(appt => {
+            const row = document.createElement('tr');
+            const statusBadge = {
+                'SCHEDULED': '<span class="badge bg-info">Đã đặt</span>',
+                'CONFIRMED': '<span class="badge bg-success">Đã xác nhận</span>',
+                'COMPLETED': '<span class="badge bg-primary">Hoàn thành</span>',
+                'CANCELLED': '<span class="badge bg-danger">Đã hủy</span>',
+                'CHECKED_IN': '<span class="badge bg-warning">Đã check-in</span>',
+                'IN_PROGRESS': '<span class="badge bg-warning">Đang khám</span>'
+            };
+
+            const doctorName = appt.doctor_name || 'Chưa rõ';
+            const departmentName = appt.department_name || 'Chưa rõ';
+            const roomLocation = appt.department_location || 'Chưa rõ';
+            
+
+            
+            row.innerHTML = `
+                <td class="text-center">${appt.appointment_date} ${appt.appointment_time}</td>
+                <td class="text-center">${doctorName}</td>
+                <td class="text-center">${departmentName}</td>
+                <td class="text-center">${roomLocation}</td>
+                <td class="text-center">${statusBadge[appt.status] || appt.status}</td>
+                <td class="text-center">${appt.chief_complaint || '-'}</td>
+            `;
+            tbody.appendChild(row);
+        });
+    } catch (error) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-danger text-center">Lỗi tải lịch sử</td></tr>';
+    }
+}
+
+// Load payment history  
+async function loadMyPayments() {
+    const tbody = document.getElementById('payment-tbody');
+    try {
+        const user = getCurrentUser();
+        // Try to load from prescriptions (as payments are linked to prescriptions)
+        const response = await axios.get(`/api/prescriptions/?search=${encodeURIComponent(user.phone_number || user.username || '')}`);
+        const prescriptions = response.data.results || response.data;
+        
+        if (prescriptions.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Chưa có đơn thuốc nào</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = '';
+        prescriptions.forEach(prescription => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${prescription.prescription_date}</td>
+                <td>Đơn thuốc - ${prescription.prescription_number}</td>
+                <td>${prescription.total_amount?.toLocaleString() || '0'} VNĐ</td>
+                <td><span class="badge bg-warning">Chờ thanh toán</span></td>
+                <td><button class="btn btn-sm btn-primary">Thanh toán</button></td>
+            `;
+            tbody.appendChild(row);
+        });
+    } catch (error) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-danger text-center">Lỗi tải thông tin thanh toán</td></tr>';
+    }
+}
+
+// Load provinces
+async function loadProvinces() {
+    try {
+        const response = await axios.get('/api/geo/provinces/');
+        const provinces = response.data;
+        const select = document.getElementById('pp-province');
+        select.innerHTML = '<option value="">Chọn Tỉnh/Thành phố</option>';
+        provinces.forEach(province => {
+            const option = document.createElement('option');
+            option.value = province.code;
+            option.textContent = province.name;
+            select.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Error loading provinces:', error);
+    }
+}
+
+// Load wards when province changes
+document.getElementById('pp-province').addEventListener('change', async function() {
+    const provinceCode = this.value;
+    const wardSelect = document.getElementById('pp-ward');
+    
+    if (!provinceCode) {
+        wardSelect.innerHTML = '<option value="">Chọn Phường/Xã</option>';
+        wardSelect.disabled = true;
+        return;
+    }
+    
+    try {
+        const response = await axios.get(`/api/geo/provinces/${provinceCode}/`);
+        const wards = response.data.wards || [];
+        wardSelect.innerHTML = '<option value="">Chọn Phường/Xã</option>';
+        wards.forEach(ward => {
+            const option = document.createElement('option');
+            option.value = ward.code;
+            option.textContent = ward.name;
+            wardSelect.appendChild(option);
+        });
+        wardSelect.disabled = false;
+    } catch (error) {
+        console.error('Error loading wards:', error);
+    }
+});
+
+// Load profile data
+async function loadMyProfile() {
+    try {
+        // Load user data
+        const userRes = await axios.get('/api/auth/profile/');
+        const userData = userRes.data;
+        document.getElementById('pp-fullname').value = userData.full_name || '';
+        document.getElementById('pp-phone').value = userData.phone_number || '';
+        document.getElementById('pp-email').value = userData.email || '';
+        
+        // Load patient data
+        const user = getCurrentUser();
+        const patients = await axios.get('/api/patients/?search=' + encodeURIComponent(user.phone_number || user.username || ''));
+        const list = patients.data.results || patients.data;
+        
+        if (list && list.length) {
+            const patient = list[0];
+            document.getElementById('pp-dob').value = patient.date_of_birth || '';
+            document.getElementById('pp-gender').value = patient.gender || '';
+            document.getElementById('pp-citizen').value = patient.citizen_id || '';
+            document.getElementById('pp-address').value = patient.address || '';
+            document.getElementById('pp-blood').value = patient.blood_type || '';
+            document.getElementById('pp-allergies').value = patient.allergies || '';
+            document.getElementById('pp-chronic').value = patient.chronic_diseases || '';
+            
+            // Set province and ward selections
+            if (patient.province) {
+                const provinceSelect = document.getElementById('pp-province');
+                for (let opt of provinceSelect.options) {
+                    if (opt.text === patient.province) {
+                        opt.selected = true;
+                        // Trigger ward loading
+                        await loadWardsForProvince(opt.value, patient.ward);
+                        break;
+                    }
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error loading profile:', error);
+    }
+}
+
+// Load wards for a specific province and select one
+async function loadWardsForProvince(provinceCode, selectedWard) {
+    const wardSelect = document.getElementById('pp-ward');
+    try {
+        const response = await axios.get(`/api/geo/provinces/${provinceCode}/`);
+        const wards = response.data.wards || [];
+        wardSelect.innerHTML = '<option value="">Chọn Phường/Xã</option>';
+        wards.forEach(ward => {
+            const option = document.createElement('option');
+            option.value = ward.code;
+            option.textContent = ward.name;
+            if (ward.name === selectedWard) {
+                option.selected = true;
+            }
+            wardSelect.appendChild(option);
+        });
+        wardSelect.disabled = false;
+    } catch (error) {
+        console.error('Error loading wards:', error);
+    }
+}
+
+// Save profile
+document.getElementById('pp-save-profile').addEventListener('click', async function() {
+    try {
+        const user = getCurrentUser();
+        const patients = await axios.get('/api/patients/?search=' + encodeURIComponent(user.phone_number || user.username || ''));
+        const list = patients.data.results || patients.data;
+        
+        const provinceSel = document.getElementById('pp-province');
+        const wardSel = document.getElementById('pp-ward');
+        const payload = {
+            full_name: document.getElementById('pp-fullname').value.trim(),
+            phone_number: document.getElementById('pp-phone').value.trim(),
+            email: document.getElementById('pp-email').value.trim() || null,
+            date_of_birth: document.getElementById('pp-dob').value || null,
+            gender: document.getElementById('pp-gender').value,
+            citizen_id: document.getElementById('pp-citizen').value.trim() || null,
+            province: provinceSel?.options[provinceSel.selectedIndex]?.text || '',
+            ward: wardSel?.options[wardSel.selectedIndex]?.text || '',
+            address: document.getElementById('pp-address').value.trim() || '',
+            blood_type: document.getElementById('pp-blood').value || null,
+            allergies: document.getElementById('pp-allergies').value.trim() || null,
+            chronic_diseases: document.getElementById('pp-chronic').value.trim() || null
+        };
+        
+        if (list && list.length) {
+            const id = list[0].id;
+            await axios.patch(`/api/patients/${id}/`, payload);
+            showAlert('Cập nhật hồ sơ thành công', 'success');
+        } else {
+            await axios.post('/api/patients/', payload);
+            showAlert('Tạo hồ sơ bệnh nhân thành công', 'success');
+        }
+    } catch (error) {
+        // Error already handled by interceptor
+    }
+});
+</script>
+{% endblock %}
