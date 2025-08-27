@@ -159,8 +159,8 @@ async function loadFormData() {
         const doctorResponse = await axios.get('/api/doctors/');
         const doctors = doctorResponse.data.results || doctorResponse.data;
         populateSelectOptions('#add-doctor', doctors, 'id', (doctor) => {
-            const fullName = doctor.user ? `${doctor.user.first_name} ${doctor.user.last_name}`.trim() : 'N/A';
-            return `${fullName} - ${doctor.department?.name || 'Chưa phân khoa'}`;
+            const fullName = doctor.doctor_name || 'N/A';
+            return `${fullName} - ${doctor.department_name || 'Chưa phân khoa'}`;
         });
         
     } catch (error) {
@@ -208,10 +208,9 @@ function renderAppointments(appointments) {
 }
 
 function createAppointmentRow(appointment) {
-    const patientName = appointment.patient?.full_name || 'N/A';
-    const doctorName = appointment.doctor?.user ? 
-        `${appointment.doctor.user.first_name} ${appointment.doctor.user.last_name}`.trim() : 'N/A';
-    const departmentName = appointment.department?.name || 'N/A';
+    const patientName = appointment.patient_name || 'N/A';
+    const doctorName = appointment.doctor_name || 'N/A';
+    const departmentName = appointment.department_name || 'N/A';
     
     const statusBadge = getStatusBadge(appointment.status);
     const priorityBadge = getPriorityBadge(appointment.priority);
@@ -638,15 +637,14 @@ function populateViewModal(appointment) {
     const modal = document.getElementById('viewAppointmentModal');
     if (!modal) return;
     
-    const patientName = appointment.patient?.full_name || 'N/A';
-    const doctorName = appointment.doctor?.user ? 
-        `${appointment.doctor.user.first_name} ${appointment.doctor.user.last_name}`.trim() : 'N/A';
+    const patientName = appointment.patient_name || 'N/A';
+    const doctorName = appointment.doctor_name || 'N/A';
     
     const fields = {
         'view-appointment-number': appointment.appointment_number,
         'view-patient-name': patientName,
         'view-doctor-name': doctorName,
-        'view-department-name': appointment.department?.name,
+        'view-department-name': appointment.department_name,
         'view-appointment-date': formatDate(appointment.appointment_date),
         'view-appointment-time': formatTime(appointment.appointment_time),
         'view-appointment-type': getAppointmentTypeText(appointment.appointment_type),
