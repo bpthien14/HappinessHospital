@@ -17,10 +17,13 @@ class User(AbstractUser):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user_type = models.CharField(max_length=20, choices=USER_TYPES, default='PATIENT')
     employee_id = models.CharField(max_length=50, blank=True, null=True, unique=True)
-    department = models.CharField(max_length=100, blank=True)
-    phone_number = models.CharField(max_length=15, blank=True)
+    department = models.CharField(max_length=100, blank=True, null=True)
+    phone_number = models.CharField(max_length=15, blank=True, null=True)
     date_of_birth = models.DateField(null=True, blank=True)
-    address = models.TextField(blank=True)
+    gender = models.CharField(max_length=1, choices=[('M', 'Nam'), ('F', 'Nữ'), ('O', 'Khác')], blank=True, null=True)
+    province = models.CharField(max_length=100, blank=True, null=True)
+    ward = models.CharField(max_length=100, blank=True, null=True)
+    address = models.TextField(blank=True, null=True)
     
     # Metadata
     is_active = models.BooleanField(default=True)

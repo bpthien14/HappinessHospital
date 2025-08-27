@@ -183,13 +183,13 @@ async function loadPatients() {
     } catch (error) {
         console.error('Error loading patients:', error);
         if (error.response?.status === 401) {
-            showAlert('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại', 'warning');
+            showFloatingNotification('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại', 'warning', 'fas fa-exclamation-triangle', 6000);
             redirectToLogin();
         } else if (error.code === 'ERR_NETWORK') {
             showAlert('Mất kết nối tạm thời. Đang thử lại...', 'warning');
             setTimeout(loadPatients, 1000);
         } else {
-            showAlert('Lỗi khi tải danh sách bệnh nhân', 'danger');
+            showFloatingNotification('Lỗi khi tải danh sách bệnh nhân', 'danger', 'fas fa-times-circle', 6000);
         }
     }
 }
@@ -339,13 +339,13 @@ async function handleAddPatient(e) {
         modal.hide();
         e.target.reset();
         
-        showAlert('Thêm bệnh nhân thành công!');
+        showFloatingNotification('Thêm bệnh nhân thành công!', 'success', 'fas fa-check-circle', 4000);
         loadPatients();
         
     } catch (error) {
         console.error('Error adding patient:', error);
         if (error.response?.status === 401) {
-            showAlert('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại', 'warning');
+            showFloatingNotification('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại', 'warning', 'fas fa-exclamation-triangle', 6000);
             redirectToLogin();
         } else {
             // Hiển thị tối đa 3 dòng lỗi ngắn gọn (không nêu tên trường kỹ thuật)

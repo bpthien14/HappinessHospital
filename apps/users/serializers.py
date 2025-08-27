@@ -7,14 +7,17 @@ class UserSerializer(serializers.ModelSerializer):
     full_name = serializers.ReadOnlyField()
     roles = serializers.SerializerMethodField()
     permissions = serializers.SerializerMethodField()
-    
+    created_by_name = serializers.SerializerMethodField()
+    updated_by_name = serializers.SerializerMethodField()
+
     class Meta:
         model = User
         fields = [
             'id', 'username', 'email', 'first_name', 'last_name', 'full_name',
-            'user_type', 'employee_id', 'department', 'phone_number', 
-            'date_of_birth', 'address', 'is_active', 'last_login',
-            'created_at', 'updated_at', 'roles', 'permissions'
+            'user_type', 'employee_id', 'department', 'phone_number',
+            'date_of_birth', 'gender', 'province', 'ward', 'address',
+            'is_active', 'last_login', 'created_at', 'updated_at', 'roles', 'permissions',
+            'created_by_name', 'updated_by_name'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'last_login']
     
@@ -31,6 +34,30 @@ class UserSerializer(serializers.ModelSerializer):
                 permissions.add(f"{resource}:{action}")
         return list(permissions)
 
+    def get_created_by_name(self, obj):
+        # Get the user who created this account from AuditLog
+        from .models import AuditLog
+        create_log = AuditLog.objects.filter(
+            resource_type='USER',
+            resource_id=str(obj.id),
+            action='CREATE'
+        ).first()
+        if create_log and create_log.user:
+            return create_log.user.full_name
+        return None
+
+    def get_updated_by_name(self, obj):
+        # Get the user who last updated this account from AuditLog
+        from .models import AuditLog
+        update_log = AuditLog.objects.filter(
+            resource_type='USER',
+            resource_id=str(obj.id),
+            action='UPDATE'
+        ).order_by('-timestamp').first()
+        if update_log and update_log.user:
+            return update_log.user.full_name
+        return None
+
 class UserCreateSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, validators=[validate_password])
     password_confirm = serializers.CharField(write_only=True)
@@ -39,13 +66,29 @@ class UserCreateSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             'username', 'email', 'password', 'password_confirm',
-            'first_name', 'last_name', 'user_type', 'employee_id', 
-            'department', 'phone_number', 'date_of_birth', 'address'
+            'first_name', 'last_name', 'user_type', 'employee_id',
+            'department', 'phone_number', 'date_of_birth', 'address',
+            'gender', 'province', 'ward'
         ]
     
     def validate(self, attrs):
         if attrs['password'] != attrs['password_confirm']:
             raise serializers.ValidationError("Passwords don't match.")
+
+        # Handle date_of_birth validation
+        if 'date_of_birth' in attrs and attrs['date_of_birth']:
+            try:
+                # Ensure date is in correct format
+                if isinstance(attrs['date_of_birth'], str):
+                    from datetime import datetime
+                    attrs['date_of_birth'] = datetime.strptime(attrs['date_of_birth'], '%Y-%m-%d').date()
+            except ValueError:
+                raise serializers.ValidationError({
+                    'date_of_birth': 'Ngày sai định dạng. Dùng định dạng YYYY-MM-DD.'
+                })
+
+
+
         return attrs
     
     def create(self, validated_data):
