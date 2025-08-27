@@ -202,15 +202,15 @@ function renderDoctors(doctors) {
 }
 
 function createDoctorRow(doctor) {
-    const departmentName = doctor.department?.name || 'Chưa phân khoa';
+    const departmentName = doctor.department_name || 'Chưa phân khoa';
     const statusBadge = doctor.is_active 
         ? '<span class="badge bg-success">Đang hoạt động</span>'
         : '<span class="badge bg-secondary">Tạm nghỉ</span>';
     
-    // Get full name from user object
-    const fullName = doctor.user ? `${doctor.user.first_name} ${doctor.user.last_name}`.trim() : 'N/A';
-    const email = doctor.user?.email || 'N/A';
-    const phone = doctor.user?.phone_number || 'N/A';
+    // Get data from API response
+    const fullName = doctor.doctor_name || 'N/A';
+    const email = doctor.email || 'N/A';
+    const phone = doctor.phone || 'N/A';
     
     return `
         <tr>
@@ -218,15 +218,10 @@ function createDoctorRow(doctor) {
                 <strong>${escapeHtml(doctor.license_number || 'N/A')}</strong>
             </td>
             <td>
-                <div class="d-flex align-items-center">
-                    <div class="avatar-circle me-2">
-                        ${fullName ? fullName.charAt(0).toUpperCase() : 'N'}
-                    </div>
-                    <div>
-                        <strong>${escapeHtml(fullName)}</strong>
-                        <br>
-                        <small class="text-muted">${formatDegree(doctor.degree)}</small>
-                    </div>
+                <div>
+                    <strong>${escapeHtml(fullName)}</strong>
+                    <br>
+                    <small class="text-muted">${formatDegree(doctor.degree)}</small>
                 </div>
             </td>
             <td>${escapeHtml(departmentName)}</td>
