@@ -79,7 +79,7 @@ class PatientCreateSerializer(serializers.ModelSerializer):
             'blood_type', 'allergies', 'chronic_diseases',
             'emergency_contact_name', 'emergency_contact_phone', 'emergency_contact_relationship',
             'has_insurance', 'insurance_number', 'insurance_valid_from', 'insurance_valid_to',
-            'insurance_hospital_code'
+            'insurance_hospital_code', 'created_by', 'updated_by'
         ]
         extra_kwargs = {
             'full_name': {'required': True},
@@ -95,6 +95,9 @@ class PatientCreateSerializer(serializers.ModelSerializer):
             'emergency_contact_name': {'required': False, 'allow_null': True, 'allow_blank': True},
             'emergency_contact_phone': {'required': False, 'allow_null': True, 'allow_blank': True},
             'emergency_contact_relationship': {'required': False, 'allow_null': True, 'allow_blank': True},
+            # tracking fields - read only
+            'created_by': {'read_only': True},
+            'updated_by': {'read_only': True},
         }
     
     def validate(self, attrs):

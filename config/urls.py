@@ -3,10 +3,11 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from django.http import HttpResponse
+from django.shortcuts import redirect
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
 
 def home(request):
-    return HttpResponse("🏥 Hospital Management System - Django Server Running Successfully! 🎉")
+    return redirect('login')
 
 urlpatterns = [
     path('', home, name='home'),
@@ -16,7 +17,7 @@ urlpatterns = [
     path('api/', include('apps.appointments.urls')),
     path('api/', include('apps.prescriptions.urls')),
     path('api/', include('apps.payments.urls')),
-    
+
     # Frontend views
     path('', include('frontend.urls')),
     

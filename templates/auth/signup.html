@@ -2,81 +2,476 @@
 
 {% block title %}Đăng ký - {{ block.super }}{% endblock %}
 
+{% block extra_css %}
+<style>
+    /* Hide navbar for auth pages */
+    nav.navbar {
+        display: none !important;
+    }
+
+    /* Adjust body margin since navbar is hidden */
+    body {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+</style>
+<style>
+    body {
+        height: 100vh;
+        width: 100vw;
+        margin: 0;
+        padding: 0;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .auth-container {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100vw;
+        height: 100vh;
+        box-sizing: border-box;
+        overflow: hidden;
+        padding: 0;
+    }
+
+    .auth-card {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        border: none;
+        border-radius: 12px;
+        box-shadow: 0 12px 25px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+        max-width: 600px;
+        width: 100%;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    .auth-header {
+        background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+        color: white;
+        padding: 1rem 1rem;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .auth-header::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: rgba(255, 255, 255, 0.1);
+        transform: rotate(45deg);
+        transition: transform 0.6s;
+    }
+
+    .auth-header:hover::before {
+        transform: rotate(45deg) translate(50px, 50px);
+    }
+
+    .auth-header .fas.fa-user-plus {
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .auth-header h2 {
+        font-size: 1.2rem;
+        margin-bottom: 0.3rem;
+    }
+
+    .auth-header p {
+        font-size: 0.8rem;
+        opacity: 0.9;
+        margin-bottom: 0;
+    }
+
+    .auth-body {
+        padding: 1rem 1rem;
+    }
+
+    .form-group {
+        margin-bottom: 0.3rem;
+    }
+
+    .form-label {
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 0.3rem;
+        font-size: 0.9rem;
+    }
+
+    .form-control, .form-select {
+        border: 2px solid #e0e0e0;
+        border-radius: 6px;
+        padding: 0.4rem 0.6rem;
+        transition: all 0.3s ease;
+        background: rgba(255, 255, 255, 0.8);
+        font-size: 0.85rem;
+        height: auto;
+        margin-bottom: 0;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: #4CAF50;
+        box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+        background: rgba(255, 255, 255, 1);
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+        border: none;
+        border-radius: 6px;
+        padding: 0.4rem 1rem;
+        font-weight: 600;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+        margin-top: 0.3rem;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(76, 175, 80, 0.3);
+    }
+
+    .account-preview {
+        background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+        border: 2px solid #2196F3;
+        border-radius: 6px;
+        padding: 0.4rem;
+        margin: 0.3rem 0;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .account-preview::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 4px;
+        height: 100%;
+        background: #2196F3;
+    }
+
+    .alert-info {
+        background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+        border: 1px solid #2196F3;
+        color: #0d47a1;
+    }
+
+    .text-link {
+        color: #4CAF50;
+        text-decoration: none;
+        font-weight: 500;
+        font-size: 0.9rem;
+        transition: color 0.3s ease;
+    }
+
+    .text-link:hover {
+        color: #388e3c;
+        text-decoration: underline;
+    }
+
+    .floating-label {
+        position: relative;
+        margin-bottom: 1.5rem;
+    }
+
+    .floating-label input:focus + label,
+    .floating-label input:not(:placeholder-shown) + label {
+        top: -8px;
+        left: 10px;
+        font-size: 12px;
+        background: white;
+        padding: 0 5px;
+        color: #4CAF50;
+    }
+
+    .floating-label label {
+        position: absolute;
+        top: 50%;
+        left: 15px;
+        transform: translateY(-50%);
+        background: transparent;
+        padding: 0 5px;
+        transition: all 0.3s ease;
+        pointer-events: none;
+        color: #666;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <script>window.__PUBLIC_PAGE__ = true;</script>
-<div class="row justify-content-center">
-    <div class="col-md-8 col-lg-6">
-        <div class="card shadow">
-            <div class="card-body p-5">
-                <div class="text-center mb-4">
-                    <i class="fas fa-user-plus fa-3x text-primary"></i>
-                    <h3 class="mt-3">Tạo tài khoản</h3>
-                </div>
+<div class="auth-container">
+    <div class="auth-card">
+                    <div class="auth-header">
+                        <div style="position: relative; z-index: 2;">
+                            <i class="fas fa-user-plus fa-4x mb-3"></i>
+                            <h2 class="mb-2">Tạo tài khoản</h2>
+                            <p class="mb-0 opacity-75">Đăng ký để sử dụng hệ thống quản lý bệnh viện</p>
+                        </div>
+                    </div>
 
                 <form id="signup-form">
                     {% csrf_token %}
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label for="username" class="form-label">Tên đăng nhập</label>
-                            <input type="text" class="form-control" id="username" name="username" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="email" class="form-label">Email</label>
-                            <input type="email" class="form-control" id="email" name="email" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="first_name" class="form-label">Họ</label>
-                            <input type="text" class="form-control" id="first_name" name="first_name">
-                        </div>
-                        <div class="col-md-6">
-                            <label for="last_name" class="form-label">Tên</label>
-                            <input type="text" class="form-control" id="last_name" name="last_name">
-                        </div>
-                        <div class="col-md-6">
-                            <label for="password" class="form-label">Mật khẩu</label>
-                            <div class="position-relative">
-                                <input type="password" class="form-control pe-5" id="password" name="password" required>
-                                <button class="btn bg-transparent border-0 shadow-none text-secondary d-none position-absolute top-50 end-0 translate-middle-y px-2" type="button" id="toggle-password" aria-label="Hiện mật khẩu">
-                                    <i class="far fa-eye"></i>
-                                </button>
+                    <div class="auth-body">
+                        <div class="row g-2">
+                            <!-- Thông tin cá nhân -->
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="full_name" class="form-label">
+                                        <i class="fas fa-user me-2"></i>Họ và tên *
+                                    </label>
+                                    <input type="text" class="form-control" id="full_name" name="full_name" required placeholder="Nhập họ và tên đầy đủ">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="email" class="form-label">
+                                        <i class="fas fa-envelope me-2"></i>Email *
+                                    </label>
+                                    <input type="email" class="form-control" id="email" name="email" required placeholder="example@email.com">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="date_of_birth" class="form-label">
+                                        <i class="fas fa-calendar me-2"></i>Ngày sinh *
+                                    </label>
+                                    <input type="date" class="form-control" id="date_of_birth" name="date_of_birth" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="gender" class="form-label">
+                                        <i class="fas fa-venus-mars me-2"></i>Giới tính *
+                                    </label>
+                                    <select class="form-select" id="gender" name="gender" required>
+                                        <option value="">Chọn giới tính</option>
+                                        <option value="M">👨 Nam</option>
+                                        <option value="F">👩 Nữ</option>
+                                        <option value="O">🏳️‍🌈 Khác</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="phone_number" class="form-label">
+                                        <i class="fas fa-phone me-2"></i>Số điện thoại *
+                                    </label>
+                                    <input type="tel" class="form-control" id="phone_number" name="phone_number" required placeholder="0123456789">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="form-label">
+                                        <i class="fas fa-id-card me-2"></i>Tài khoản sẽ được tạo
+                                    </label>
+                                    <div class="account-preview">
+                                        <div class="row g-2 text-center">
+                                            <div class="col-6">
+                                                <small class="text-muted d-block">Username</small>
+                                                <strong><span id="preview-username">-</span></strong>
+                                            </div>
+                                            <div class="col-6">
+                                                <small class="text-muted d-block">Password</small>
+                                                <strong><span id="preview-password">-</span></strong>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Địa chỉ -->
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="province" class="form-label">
+                                        <i class="fas fa-map-marker-alt me-2"></i>Tỉnh/Thành phố *
+                                    </label>
+                                    <select class="form-select" id="province" name="province" required>
+                                        <option value="">Chọn Tỉnh/Thành phố</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="ward" class="form-label">
+                                        <i class="fas fa-map-pin me-2"></i>Phường/Xã *
+                                    </label>
+                                    <select class="form-select" id="ward" name="ward" required disabled>
+                                        <option value="">Chọn Phường/Xã</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="form-group">
+                                    <label for="address" class="form-label">
+                                        <i class="fas fa-home me-2"></i>Địa chỉ chi tiết *
+                                    </label>
+                                    <input type="text" class="form-control" id="address" name="address" required disabled placeholder="Chọn Tỉnh/Thành phố và Phường/Xã trước">
+                                </div>
                             </div>
                         </div>
-                        <div class="col-md-6">
-                            <label for="password_confirm" class="form-label">Xác nhận mật khẩu</label>
-                            <div class="position-relative">
-                                <input type="password" class="form-control pe-5" id="password_confirm" name="password_confirm" required>
-                                <button class="btn bg-transparent border-0 shadow-none text-secondary d-none position-absolute top-50 end-0 translate-middle-y px-2" type="button" id="toggle-password-confirm" aria-label="Hiện mật khẩu">
-                                    <i class="far fa-eye"></i>
-                                </button>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="phone_number" class="form-label">Số điện thoại</label>
-                            <input type="text" class="form-control" id="phone_number" name="phone_number">
-                        </div>
-                        <!-- User type fixed to PATIENT by backend; hide selector for simplicity -->
-                        <div class="col-12">
-                            <label for="address" class="form-label">Địa chỉ</label>
-                            <textarea class="form-control" id="address" name="address" rows="2"></textarea>
-                        </div>
-                    </div>
 
-                    <div class="mt-4">
-                        <button type="submit" class="btn btn-primary w-100">
-                            <i class="fas fa-user-plus"></i> Đăng ký
-                        </button>
-                    </div>
-                </form>
+                        <div class="mt-4">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-user-plus me-2"></i>Đăng ký tài khoản
+                            </button>
+                        </div>
+                    </form>
 
-                <div class="text-center mt-3">
-                    <a href="{% url 'login' %}" class="text-muted">Đã có tài khoản? Đăng nhập</a>
+                    <div class="text-center mt-2">
+                        <p class="mb-1">
+                            <a href="{% url 'login' %}" class="text-link">
+                                <i class="fas fa-sign-in-alt me-1"></i>Đã có tài khoản? Đăng nhập ngay
+                            </a>
+                        </p>
+                        <p class="text-muted small" style="font-size: 0.75rem; margin-bottom: 0;">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Bằng việc đăng ký, bạn đồng ý với các điều khoản sử dụng của chúng tôi
+                        </p>
+                    </div>
                 </div>
             </div>
-        </div>
-    </div>
 </div>
 
 <script>
+// ===== Địa giới hành chính Việt Nam =====
+let vnAdminCache = {
+    provinces: null,
+    districtsByProvince: {},
+    wardsByDistrict: {}
+};
+
+function bindAdministrativeSelectors() {
+    const provinceSelect = document.getElementById('province');
+    const wardSelect = document.getElementById('ward');
+    const addressInput = document.getElementById('address');
+
+    if (!provinceSelect || !wardSelect) return;
+
+    // Load provinces on page load
+    loadProvinces().then(() => {
+        // no-op
+    }).catch(() => {
+        showFloatingNotification('Không tải được danh sách Tỉnh/TP', 'warning');
+    });
+
+    provinceSelect.addEventListener('change', async function() {
+        const provinceCode = this.value;
+        // Reset lower level
+        wardSelect.innerHTML = '<option value="">Chọn Phường/Xã</option>';
+        wardSelect.disabled = true;
+        addressInput.disabled = true;
+
+        if (provinceCode) {
+            await loadWardsByProvince(provinceCode);
+            wardSelect.disabled = false;
+        }
+    });
+
+    wardSelect.addEventListener('change', function() {
+        const wardCode = this.value;
+        addressInput.disabled = !wardCode;
+        if (wardCode) {
+            addressInput.focus();
+        }
+    });
+}
+
+async function loadProvinces() {
+    if (vnAdminCache.provinces) {
+        renderOptions(document.getElementById('province'), vnAdminCache.provinces, 'Chọn Tỉnh/Thành phố');
+        return;
+    }
+    const url = '/api/geo/provinces/';
+    try {
+        const res = await axios.get(url);
+        const items = res.data.map(p => {
+            const display = normalizeProvinceName(p.name);
+            return { value: p.code, label: display, extra: p.name };
+        });
+        vnAdminCache.provinces = items;
+        renderOptions(document.getElementById('province'), items, 'Chọn Tỉnh/Thành phố');
+    } catch (e) {
+        console.warn('Load provinces failed', e);
+    }
+}
+
+async function loadWardsByProvince(provinceCode) {
+    if (vnAdminCache.wardsByDistrict[provinceCode]) {
+        renderOptions(document.getElementById('ward'), vnAdminCache.wardsByDistrict[provinceCode], 'Chọn Phường/Xã');
+        return;
+    }
+    const url = `/api/geo/provinces/${provinceCode}/`;
+    try {
+        const res = await axios.get(url);
+        const wards = (res.data?.wards || []).map(w => ({ value: w.code, label: w.name, extra: w.name }));
+        vnAdminCache.wardsByDistrict[provinceCode] = wards;
+        renderOptions(document.getElementById('ward'), wards, 'Chọn Phường/Xã');
+        const pname = res.data?.name ? normalizeProvinceName(res.data.name) : '';
+        document.getElementById('province').dataset.label = pname;
+    } catch (e) {
+        console.warn('Load wards by province failed', e);
+    }
+}
+
+function renderOptions(selectEl, items, placeholder) {
+    const prev = selectEl.value;
+    selectEl.innerHTML = '';
+    const ph = document.createElement('option');
+    ph.value = '';
+    ph.textContent = placeholder || 'Chọn';
+    selectEl.appendChild(ph);
+    items.forEach(it => {
+        const opt = document.createElement('option');
+        opt.value = String(it.value);
+        opt.textContent = it.label;
+        opt.dataset.label = it.label;
+        if (String(prev) === String(it.value)) opt.selected = true;
+        selectEl.appendChild(opt);
+    });
+}
+
+function normalizeProvinceName(name) {
+    if (!name) return name;
+    const trimmed = String(name).replace(/^\s+|\s+$/g, '');
+    return trimmed.replace(/^(Tỉnh|Thành\s*phố|TP\.?)(\s+)/i, '');
+}
+
+// ===== Preview username và password =====
+function updateAccountPreview() {
+    const phoneNumber = document.getElementById('phone_number').value.trim();
+    const previewUsername = document.getElementById('preview-username');
+    const previewPassword = document.getElementById('preview-password');
+
+    if (phoneNumber.length >= 3) {
+        const phoneLast3 = phoneNumber.slice(-3);
+        previewUsername.textContent = phoneNumber;
+        previewPassword.textContent = `benhnhan${phoneLast3}`;
+    } else {
+        previewUsername.textContent = '-';
+        previewPassword.textContent = '-';
+    }
+}
+
+// ===== Form submission =====
 document.getElementById('signup-form').addEventListener('submit', async (e) => {
     e.preventDefault();
 
@@ -85,21 +480,64 @@ document.getElementById('signup-form').addEventListener('submit', async (e) => {
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang tạo tài khoản...';
 
+    // Validate phone number format
+    const phoneNumber = document.getElementById('phone_number').value;
+    const phoneRegex = /^(\+84|0)[3|5|7|8|9](\d{8})$/;
+    if (!phoneRegex.test(phoneNumber)) {
+        showFloatingNotification('Số điện thoại không đúng định dạng Việt Nam', 'danger');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+        return;
+    }
+
+    // Generate username and password
+    const phoneLast3 = phoneNumber.slice(-3);
+    const username = phoneNumber;
+    const password = `benhnhan${phoneLast3}`;
+
+    // Split full name
+    const fullName = document.getElementById('full_name').value.trim();
+    const nameParts = fullName.split(' ');
+    const firstName = nameParts[0] || '';
+    const lastName = nameParts.slice(1).join(' ') || '';
+
+    // Prepare payload
     const payload = {
-        username: document.getElementById('username').value,
+        username: username,
         email: document.getElementById('email').value,
-        first_name: document.getElementById('first_name').value,
-        last_name: document.getElementById('last_name').value,
-        password: document.getElementById('password').value,
-        password_confirm: document.getElementById('password_confirm').value,
-        phone_number: document.getElementById('phone_number').value,
+        first_name: firstName,
+        last_name: lastName,
+        password: password,
+        password_confirm: password,
+        phone_number: phoneNumber,
+        date_of_birth: document.getElementById('date_of_birth').value,
+        gender: document.getElementById('gender').value,
         user_type: 'PATIENT',
+        province: document.getElementById('province').value,
+        ward: document.getElementById('ward').value,
         address: document.getElementById('address').value,
     };
+
+    // Remove empty values
+    Object.keys(payload).forEach(key => {
+        if (payload[key] === '' || payload[key] === null || payload[key] === undefined) {
+            delete payload[key];
+        }
+    });
 
     try {
         const response = await axios.post('/api/auth/register/', payload);
         const data = response.data;
+
+        // Save account info for display
+        const accountInfo = {
+            username: username,
+            password: password,
+            fullName: fullName,
+            phoneNumber: phoneNumber
+        };
+        localStorage.setItem('new_account_info', JSON.stringify(accountInfo));
+
         // Lưu token và chuyển hướng
         if (data.access && data.refresh) {
             localStorage.setItem('access_token', data.access);
@@ -108,7 +546,15 @@ document.getElementById('signup-form').addEventListener('submit', async (e) => {
         if (data.user) {
             localStorage.setItem('user_data', JSON.stringify(data.user));
         }
-        window.location.replace('/dashboard/');
+
+        // Show success message
+        showFloatingNotification('Tài khoản đã được tạo thành công!', 'success', 'fas fa-check-circle', 5000);
+
+        // Redirect after short delay
+        setTimeout(() => {
+            window.location.replace('/dashboard/');
+        }, 2000);
+
     } catch (error) {
         let message = 'Đăng ký thất bại';
         if (error.response?.data) {
@@ -121,67 +567,84 @@ document.getElementById('signup-form').addEventListener('submit', async (e) => {
                 message = errs;
             }
         }
-        // Popup góc phải
-        const toast = document.createElement('div');
-        toast.className = 'position-fixed top-0 end-0 p-3';
-        toast.style.zIndex = 1080;
-        toast.innerHTML = `
-            <div class="toast align-items-center text-bg-danger border-0 show" role="alert">
-                <div class="d-flex">
-                    <div class="toast-body">${message}</div>
-                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-                </div>
-            </div>`;
-        document.body.appendChild(toast);
-        setTimeout(() => { try { toast.remove(); } catch(e){} }, 6000);
-    } finally {
+        showFloatingNotification(message, 'danger', 'fas fa-times-circle', 8000);
+
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalText;
     }
 });
 
-document.getElementById('toggle-password').addEventListener('click', function() {
-    const input = document.getElementById('password');
-    const icon = this.querySelector('i');
-    const isHidden = input.type === 'password';
-    input.type = isHidden ? 'text' : 'password';
-    icon.classList.toggle('fa-eye');
-    icon.classList.toggle('fa-eye-slash');
-    this.setAttribute('aria-label', isHidden ? 'Ẩn mật khẩu' : 'Hiện mật khẩu');
+// ===== Event listeners =====
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize administrative selectors
+    bindAdministrativeSelectors();
+
+    // Update account preview when phone number changes
+    document.getElementById('phone_number').addEventListener('input', updateAccountPreview);
 });
 
-document.getElementById('toggle-password-confirm').addEventListener('click', function() {
-    const input = document.getElementById('password_confirm');
-    const icon = this.querySelector('i');
-    const isHidden = input.type === 'password';
-    input.type = isHidden ? 'text' : 'password';
-    icon.classList.toggle('fa-eye');
-    icon.classList.toggle('fa-eye-slash');
-    this.setAttribute('aria-label', isHidden ? 'Ẩn mật khẩu' : 'Hiện mật khẩu');
-});
+// ===== Floating notification function =====
+function showFloatingNotification(message, type = 'info', icon = null, duration = 5000) {
+    const containerId = 'hh-floating-notifications';
+    let container = document.getElementById(containerId);
+    if (!container) {
+        container = document.createElement('div');
+        container.id = containerId;
+        container.style.position = 'fixed';
+        container.style.top = '1rem';
+        container.style.right = '1rem';
+        container.style.zIndex = '1060';
+        container.style.maxWidth = '350px';
+        document.body.appendChild(container);
+    }
 
-// Only show toggle buttons when inputs have value
-(function() {
-    const pwdInput = document.getElementById('password');
-    const pwdToggle = document.getElementById('toggle-password');
-    const repInput = document.getElementById('password_confirm');
-    const repToggle = document.getElementById('toggle-password-confirm');
-    const update = () => {
-        if (pwdInput.value && pwdInput.value.length > 0) {
-            pwdToggle.classList.remove('d-none');
-        } else {
-            pwdToggle.classList.add('d-none');
-        }
-        if (repInput.value && repInput.value.length > 0) {
-            repToggle.classList.remove('d-none');
-        } else {
-            repToggle.classList.add('d-none');
-        }
+    const typeClasses = {
+        success: 'alert-success',
+        info: 'alert-info',
+        warning: 'alert-warning',
+        danger: 'alert-danger'
     };
-    pwdInput.addEventListener('input', update);
-    repInput.addEventListener('input', update);
-    update();
-})();
+
+    const typeIcons = {
+        success: 'fas fa-check-circle',
+        info: 'fas fa-info-circle',
+        warning: 'fas fa-exclamation-triangle',
+        danger: 'fas fa-times-circle'
+    };
+
+    const toast = document.createElement('div');
+    toast.className = `alert ${typeClasses[type] || 'alert-info'} shadow-lg border-0`;
+    toast.style.minWidth = '320px';
+    toast.style.marginBottom = '0.5rem';
+
+    const iconHtml = icon || typeIcons[type] || 'fas fa-info-circle';
+
+    toast.innerHTML = `
+        <div class="d-flex align-items-center">
+            <i class="${iconHtml} me-2"></i>
+            <div class="flex-grow-1">${message}</div>
+            <button type="button" class="btn-close btn-close-sm ms-2" onclick="this.parentElement.parentElement.remove()"></button>
+        </div>
+    `;
+
+    container.appendChild(toast);
+
+    // Auto remove after duration
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateX(100%)';
+            setTimeout(() => {
+                if (toast.parentNode) toast.remove();
+            }, 300);
+        }
+    }, duration);
+
+    return toast;
+}
+
+
 </script>
 {% endblock %}
 

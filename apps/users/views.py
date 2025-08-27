@@ -1,9 +1,10 @@
-from rest_framework import generics, status, permissions
+from rest_framework import generics, status, permissions, filters
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
+from django_filters.rest_framework import DjangoFilterBackend
 from django.contrib.auth import update_session_auth_hash
 from django.utils import timezone
 
@@ -157,7 +158,22 @@ class UserViewSet(ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [HasPermission]
-    
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    filterset_fields = ['user_type', 'is_active']
+    search_fields = ['username', 'first_name', 'last_name', 'email', 'phone_number', 'employee_id', 'department']
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        # Filter by exclude_user_types (for NON_PATIENT option)
+        exclude_user_types = self.request.query_params.get('exclude_user_types')
+        if exclude_user_types:
+            # Split by comma and exclude multiple user types
+            exclude_types = exclude_user_types.split(',')
+            queryset = queryset.exclude(user_type__in=exclude_types)
+
+        return queryset
+
     def get_permissions(self):
         if self.action in ['list', 'retrieve']:
             self.required_permissions = ['USER:READ']

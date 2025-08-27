@@ -24,9 +24,12 @@ function initializeDashboard() {
     if (dashboardInitialized) {
         return;
     }
-    
+
     dashboardInitialized = true;
-    
+
+    // Check and display new account info
+    checkNewAccountInfo();
+
     loadDashboardStats();
     loadRecentPatients();
 }
@@ -163,5 +166,37 @@ function formatDate(dateString) {
     } catch (error) {
         console.error('Error formatting date:', error);
         return dateString;
+    }
+}
+
+// Check and display new account information
+function checkNewAccountInfo() {
+    try {
+        const accountInfo = localStorage.getItem('new_account_info');
+        if (accountInfo) {
+            const info = JSON.parse(accountInfo);
+
+            // Display account info
+            document.getElementById('account-fullname').textContent = info.fullName || '-';
+            document.getElementById('account-phone').textContent = info.phoneNumber || '-';
+            document.getElementById('account-username').textContent = info.username || '-';
+            document.getElementById('account-password').textContent = info.password || '-';
+
+            // Show the account info section
+            document.getElementById('new-account-info').style.display = 'block';
+
+            // Auto-hide after 30 seconds
+            setTimeout(() => {
+                const alertElement = document.getElementById('new-account-info');
+                if (alertElement) {
+                    alertElement.style.display = 'none';
+                }
+            }, 30000);
+
+            // Clear the stored info
+            localStorage.removeItem('new_account_info');
+        }
+    } catch (error) {
+        console.error('Error displaying new account info:', error);
     }
 }

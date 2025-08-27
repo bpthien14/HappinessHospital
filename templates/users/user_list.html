@@ -1,0 +1,426 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Danh sách người dùng - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-users-cog"></i> Danh sách người dùng</h2>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal">
+        <i class="fas fa-user-plus"></i> Thêm người dùng
+    </button>
+</div>
+
+<!-- Search and Filter -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form id="search-form" class="row g-3">
+            <div class="col-md-4">
+                <label for="search-query" class="form-label">Tìm kiếm</label>
+                <input type="text" class="form-control" id="search-query"
+                       placeholder="Username, họ tên, email...">
+            </div>
+            <div class="col-md-2">
+                <label for="user-type-filter" class="form-label">Loại người dùng</label>
+                <select class="form-select" id="user-type-filter">
+                    <option value="">Tất cả</option>
+                    <option value="PATIENT">Bệnh nhân</option>
+                    <option value="DOCTOR">Bác sĩ</option>
+                    <option value="NURSE">Y tá</option>
+                    <option value="RECEPTION">Lễ tân</option>
+                    <option value="PHARMACIST">Dược sĩ</option>
+                    <option value="TECHNICIAN">Kỹ thuật viên</option>
+                    <option value="ADMIN">Quản trị viên</option>
+                    <option value="CASHIER">Thu ngân</option>
+                    <option value="NON_PATIENT">👥 Nhân viên</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="status-filter" class="form-label">Trạng thái</label>
+                <select class="form-select" id="status-filter">
+                    <option value="">Tất cả</option>
+                    <option value="true">Hoạt động</option>
+                    <option value="false">Vô hiệu</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">&nbsp;</label>
+                <button type="submit" class="btn btn-outline-primary d-block">
+                    <i class="fas fa-search"></i> Tìm kiếm
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- User Table -->
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover text-center align-middle" id="users-table">
+                <thead class="table-light text-center">
+                    <tr>
+                        <th>Username</th>
+                        <th>Họ tên</th>
+                        <th>Loại</th>
+                        <th>Email</th>
+                        <th>SĐT</th>
+                        <th>Khoa</th>
+                        <th>Trạng thái</th>
+                        <th>Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody id="users-tbody" class="text-center">
+                    <!-- Data will be loaded here -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <nav id="pagination-nav" class="mt-3">
+            <ul class="pagination justify-content-center" id="pagination">
+                <!-- Pagination will be rendered here -->
+            </ul>
+        </nav>
+    </div>
+</div>
+
+<!-- Add User Modal -->
+<div class="modal fade" id="addUserModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Thêm người dùng mới</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="add-user-form" novalidate>
+                <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+                    <!-- Thông tin cơ bản -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-primary text-white">
+                            <h6 class="mb-0"><i class="fas fa-user me-2"></i>Thông tin cơ bản</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="username" class="form-label fw-bold">Username *</label>
+                                    <input type="text" class="form-control" id="username" name="username" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="email" class="form-label fw-bold">Email *</label>
+                                    <input type="email" class="form-control" id="email" name="email" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="first_name" class="form-label fw-bold">Họ *</label>
+                                    <input type="text" class="form-control" id="first_name" name="first_name" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="last_name" class="form-label fw-bold">Tên *</label>
+                                    <input type="text" class="form-control" id="last_name" name="last_name" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="password" class="form-label fw-bold">Mật khẩu *</label>
+                                    <input type="password" class="form-control" id="password" name="password" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="password_confirm" class="form-label fw-bold">Xác nhận mật khẩu *</label>
+                                    <input type="password" class="form-control" id="password_confirm" name="password_confirm" required>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Thông tin công việc -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-info text-white">
+                            <h6 class="mb-0"><i class="fas fa-briefcase me-2"></i>Thông tin công việc</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="user_type" class="form-label fw-bold">Loại người dùng *</label>
+                                    <select class="form-select" id="user_type" name="user_type" required>
+                                        <option value="">Chọn loại người dùng</option>
+                                        <option value="PATIENT">Bệnh nhân</option>
+                                        <option value="DOCTOR">Bác sĩ</option>
+                                        <option value="NURSE">Y tá</option>
+                                        <option value="RECEPTION">Lễ tân</option>
+                                        <option value="PHARMACIST">Dược sĩ</option>
+                                        <option value="TECHNICIAN">Kỹ thuật viên</option>
+                                        <option value="ADMIN">Quản trị viên</option>
+                                        <option value="CASHIER">Thu ngân</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="employee_id" class="form-label fw-bold">Mã nhân viên</label>
+                                    <input type="text" class="form-control" id="employee_id" name="employee_id">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="department" class="form-label fw-bold">Khoa/Phòng</label>
+                                    <input type="text" class="form-control" id="department" name="department">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="phone_number" class="form-label fw-bold">Số điện thoại</label>
+                                    <input type="tel" class="form-control" id="phone_number" name="phone_number">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Thông tin cá nhân -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-success text-white">
+                            <h6 class="mb-0"><i class="fas fa-address-card me-2"></i>Thông tin cá nhân</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="date_of_birth" class="form-label fw-bold">Ngày sinh</label>
+                                    <input type="date" class="form-control" id="date_of_birth" name="date_of_birth">
+                                </div>
+                                <div class="col-md-12">
+                                    <label for="address" class="form-label fw-bold">Địa chỉ</label>
+                                    <textarea class="form-control" id="address" name="address" rows="2"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-primary" id="save-user-btn" disabled>Lưu thông tin</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="{% load static %}{% static 'js/users.js' %}"></script>
+<!-- View User Modal -->
+<div class="modal fade" id="viewUserModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Thông tin người dùng</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="view-user-loading" class="text-center py-4" style="display:none;">
+                    <div class="spinner-border text-primary" role="status"></div>
+                </div>
+                <div id="view-user-error" class="alert alert-danger d-none"></div>
+                <div id="view-user-content" class="d-none">
+                    <ul class="nav nav-tabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="vu-view-tab" data-bs-toggle="tab" data-bs-target="#vu-view" type="button" role="tab">Xem</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="vu-edit-tab" data-bs-toggle="tab" data-bs-target="#vu-edit" type="button" role="tab">Cập nhật thông tin</button>
+                        </li>
+                    </ul>
+                    <div class="tab-content pt-3">
+                        <div class="tab-pane fade show active" id="vu-view" role="tabpanel">
+                            <!-- Thông tin cơ bản -->
+                            <div class="card mb-3">
+                                <div class="card-header bg-primary text-white">
+                                    <h6 class="mb-0"><i class="fas fa-user me-2"></i>Thông tin cơ bản</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <div class="mb-2"><i class="fas fa-id-badge text-primary me-2"></i><strong>Username:</strong> <span id="vu-username" class="badge bg-light text-dark">-</span></div>
+                                            <div class="mb-2"><i class="fas fa-user text-primary me-2"></i><strong>Họ tên:</strong> <span id="vu-full_name" class="text-primary fw-bold">-</span></div>
+                                            <div class="mb-2"><i class="fas fa-envelope text-info me-2"></i><strong>Email:</strong> <span id="vu-email" class="text-info">-</span></div>
+                                            <div class="mb-2"><i class="fas fa-phone text-success me-2"></i><strong>SĐT:</strong> <span id="vu-phone" class="text-success">-</span></div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-2"><i class="fas fa-briefcase text-warning me-2"></i><strong>Loại:</strong> <span id="vu-user_type">-</span></div>
+                                            <div class="mb-2"><i class="fas fa-id-card text-secondary me-2"></i><strong>Mã NV:</strong> <span id="vu-employee_id">-</span></div>
+                                            <div class="mb-2"><i class="fas fa-building text-danger me-2"></i><strong>Khoa:</strong> <span id="vu-department">-</span></div>
+                                            <div class="mb-2"><i class="fas fa-toggle-on text-success me-2"></i><strong>Trạng thái:</strong> <span id="vu-is_active">-</span></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Thông tin cá nhân -->
+                            <div class="card mb-3">
+                                <div class="card-header bg-success text-white">
+                                    <h6 class="mb-0"><i class="fas fa-address-card me-2"></i>Thông tin cá nhân</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <div class="mb-2"><i class="fas fa-calendar text-primary me-2"></i><strong>Ngày sinh:</strong> <span id="vu-dob">-</span></div>
+                                            <div class="mb-2"><i class="fas fa-map-marker-alt text-danger me-2"></i><strong>Địa chỉ:</strong> <span id="vu-address">-</span></div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-2"><i class="fas fa-clock text-info me-2"></i><strong>Đăng nhập cuối:</strong> <span id="vu-last_login">-</span></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+
+
+                            <!-- Thông tin hệ thống -->
+                            <div class="mt-3 p-2 bg-light border rounded">
+                                <div class="row g-2 text-center">
+                                    <div class="col-md-6">
+                                        <small class="text-muted d-block">📅 Ngày tạo</small>
+                                        <small class="fw-semibold" id="vu-created_at">-</small>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <small class="text-muted d-block">🔄 Cập nhật gần nhất</small>
+                                        <small class="fw-semibold" id="vu-updated_at">-</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="vu-edit" role="tabpanel">
+                            <form id="vu-edit-form" novalidate>
+                                <!-- Thông tin cơ bản -->
+                                <div class="card mb-3">
+                                    <div class="card-header bg-primary text-white">
+                                        <h6 class="mb-0"><i class="fas fa-user me-2"></i>Thông tin cơ bản</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row g-3">
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-bold">Username</label>
+                                                <input type="text" class="form-control" id="ve-username" readonly>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-bold">Email</label>
+                                                <input type="email" class="form-control" id="ve-email">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-bold">Họ</label>
+                                                <input type="text" class="form-control" id="ve-first_name">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-bold">Tên</label>
+                                                <input type="text" class="form-control" id="ve-last_name">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Thông tin công việc -->
+                                <div class="card mb-3">
+                                    <div class="card-header bg-info text-white">
+                                        <h6 class="mb-0"><i class="fas fa-briefcase me-2"></i>Thông tin công việc</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row g-3">
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-bold">Loại người dùng</label>
+                                                <select class="form-select" id="ve-user_type">
+                                                    <option value="PATIENT">Bệnh nhân</option>
+                                                    <option value="DOCTOR">Bác sĩ</option>
+                                                    <option value="NURSE">Y tá</option>
+                                                    <option value="RECEPTION">Lễ tân</option>
+                                                    <option value="PHARMACIST">Dược sĩ</option>
+                                                    <option value="TECHNICIAN">Kỹ thuật viên</option>
+                                                    <option value="ADMIN">Quản trị viên</option>
+                                                    <option value="CASHIER">Thu ngân</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-bold">Mã nhân viên</label>
+                                                <input type="text" class="form-control" id="ve-employee_id">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-bold">Khoa/Phòng</label>
+                                                <input type="text" class="form-control" id="ve-department">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-bold">Số điện thoại</label>
+                                                <input type="tel" class="form-control" id="ve-phone_number">
+                                            </div>
+                                            <div class="col-md-12">
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" id="ve-is_active">
+                                                    <label class="form-check-label fw-bold" for="ve-is_active">Tài khoản hoạt động</label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Thông tin cá nhân -->
+                                <div class="card mb-3">
+                                    <div class="card-header bg-success text-white">
+                                        <h6 class="mb-0"><i class="fas fa-address-card me-2"></i>Thông tin cá nhân</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row g-3">
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-bold">Ngày sinh</label>
+                                                <input type="date" class="form-control" id="ve-date_of_birth">
+                                            </div>
+                                            <div class="col-md-12">
+                                                <label class="form-label fw-bold">Địa chỉ</label>
+                                                <textarea class="form-control" id="ve-address" rows="2"></textarea>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                <button type="button" class="btn btn-primary" id="vu-save-btn" style="display: none;">Lưu thay đổi</button>
+            </div>
+        </div>
+    </div>
+ </div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteUserModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Xác nhận xóa người dùng
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center">
+                    <i class="fas fa-user-times text-danger" style="font-size: 3rem; margin-bottom: 1rem;"></i>
+                    <h6 class="fw-bold mb-3">Bạn có chắc chắn muốn xóa người dùng này?</h6>
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Cảnh báo:</strong> Hành động này không thể hoàn tác. Tất cả dữ liệu liên quan đến người dùng sẽ bị xóa vĩnh viễn.
+                    </div>
+                    <div class="user-info bg-light p-3 rounded">
+                        <div class="row">
+                            <div class="col-6"><strong>Username:</strong></div>
+                            <div class="col-6" id="delete-user-username">-</div>
+                        </div>
+                        <div class="row">
+                            <div class="col-6"><strong>Họ tên:</strong></div>
+                            <div class="col-6" id="delete-user-name">-</div>
+                        </div>
+                        <div class="row">
+                            <div class="col-6"><strong>Email:</strong></div>
+                            <div class="col-6" id="delete-user-email">-</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Hủy bỏ
+                </button>
+                <button type="button" class="btn btn-danger" id="confirm-delete-btn">
+                    <i class="fas fa-trash me-2"></i>Xóa người dùng
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

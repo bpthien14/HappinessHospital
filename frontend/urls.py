@@ -12,4 +12,6 @@ urlpatterns = [
     path('appointments/', views.appointment_list_view, name='appointment_list'),
     path('appointments/<uuid:appointment_id>/', views.appointment_detail_view, name='appointment_detail'),
     path('', views.dashboard_view, name='home'),  # Redirect to dashboard
+    path('users/', views.user_list_view, name='user_list'),
+    path('users/<uuid:user_id>/', views.user_detail_view, name='user_detail'),
 ]

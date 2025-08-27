@@ -47,6 +47,14 @@ def appointment_detail_view(request, appointment_id):
     """Appointment detail view - No authentication required, handled by frontend"""
     context = {'appointment_id': appointment_id}
     return render(request, 'appointments/appointment_detail.html', context)
+def user_list_view(request):
+    """User list view - No authentication required, handled by frontend"""
+    return render(request, 'users/user_list.html')
+
+def user_detail_view(request, user_id):
+    """User detail view - No authentication required, handled by frontend"""
+    context = {'user_id': user_id}
+    return render(request, 'users/user_detail.html', context)
 
 
 # ===== Địa giới hành chính Việt Nam (local JSON via vietnam-provinces) =====
