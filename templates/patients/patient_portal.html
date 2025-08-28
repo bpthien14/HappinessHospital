@@ -225,11 +225,11 @@
                         <table class="table table-hover">
                             <thead class="table-light">
                                 <tr>
-                                    <th>Ngày</th>
+                                    <th class="text-center">Ngày</th>
                                     <th>Nội dung</th>
-                                    <th>Số tiền</th>
-                                    <th>Trạng thái</th>
-                                    <th>Thao tác</th>
+                                    <th class="text-center">Số tiền</th>
+                                    <th class="text-center">Trạng thái</th>
+                                    <th class="text-center">Thao tác</th>
                                 </tr>
                             </thead>
                             <tbody id="payment-tbody">
@@ -858,32 +858,213 @@ async function loadMyAppointments() {
 // Load payment history  
 async function loadMyPayments() {
     const tbody = document.getElementById('payment-tbody');
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center"><i class="fas fa-spinner fa-spin"></i> Đang tải...</td></tr>';
+
     try {
         const user = getCurrentUser();
-        // Try to load from prescriptions (as payments are linked to prescriptions)
-        const response = await axios.get(`/api/prescriptions/?search=${encodeURIComponent(user.phone_number || user.username || '')}`);
-        const prescriptions = response.data.results || response.data;
-        
-        if (prescriptions.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Chưa có đơn thuốc nào</td></tr>';
+
+        if (!user || (!user.phone_number && !user.username)) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-warning">Không thể xác định thông tin người dùng</td></tr>';
             return;
         }
-        
+
+        // Load patient data first
+        const patientResponse = await axios.get('/api/patients/?search=' + encodeURIComponent(user.phone_number || user.username || ''));
+        const patients = patientResponse.data.results || patientResponse.data;
+
+        if (!patients || patients.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Không tìm thấy thông tin bệnh nhân</td></tr>';
+            return;
+        }
+
+        const patient = patients[0];
+
+        // Load prescriptions for this specific patient using patient ID filter
+        const prescriptionsResponse = await axios.get(`/api/prescriptions/?patient=${patient.id}`);
+        const allPrescriptions = prescriptionsResponse.data.results || prescriptionsResponse.data;
+
+        // Remove duplicates by prescription_number
+        const prescriptions = allPrescriptions.filter((prescription, index, self) =>
+            index === self.findIndex(p => p.prescription_number === prescription.prescription_number)
+        );
+
+        // Load all payments and filter by patient's prescriptions
+        const allPaymentsResponse = await axios.get('/api/payments/');
+        const allPayments = allPaymentsResponse.data.results || allPaymentsResponse.data;
+
+        // Filter payments that belong to this patient's prescriptions
+        const prescriptionNumbers = prescriptions.map(p => p.prescription_number);
+        const payments = allPayments.filter(payment =>
+            payment.prescription_number && prescriptionNumbers.includes(payment.prescription_number)
+        );
+
+
+
+        // Clear loading and build the table
         tbody.innerHTML = '';
-        prescriptions.forEach(prescription => {
+
+        // Display existing payments (remove duplicates)
+        const uniquePayments = payments.filter((payment, index, self) =>
+            index === self.findIndex(p => p.prescription_number === payment.prescription_number)
+        );
+
+
+
+        uniquePayments.forEach(payment => {
+            const prescription = prescriptions.find(p => p.prescription_number === payment.prescription_number);
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td>${prescription.prescription_date}</td>
-                <td>Đơn thuốc - ${prescription.prescription_number}</td>
-                <td>${prescription.total_amount?.toLocaleString() || '0'} VNĐ</td>
-                <td><span class="badge bg-warning">Chờ thanh toán</span></td>
-                <td><button class="btn btn-sm btn-primary">Thanh toán</button></td>
+                <td class="text-center">${formatDate(prescription?.prescription_date || payment.created_at)}</td>
+                <td>Đơn thuốc - ${payment.prescription_number}</td>
+                <td class="text-center">${(payment.amount || prescription?.total_amount || 0).toLocaleString()} VNĐ</td>
+                <td class="text-center"><span class="badge ${getPaymentStatusBadge(payment.status)}">${getPaymentStatusText(payment.status)}</span></td>
+                <td class="text-center">${getPaymentAction(payment)}</td>
             `;
             tbody.appendChild(row);
         });
+
+        // Display prescriptions without payments (unpaid) - remove duplicates
+        const paidPrescriptionNumbers = uniquePayments.map(p => p.prescription_number);
+        const unpaidPrescriptions = prescriptions
+            .filter(p => !paidPrescriptionNumbers.includes(p.prescription_number) && p.total_amount > 0)
+            .filter((prescription, index, self) =>
+                index === self.findIndex(p => p.prescription_number === prescription.prescription_number)
+            );
+
+
+
+        unpaidPrescriptions.forEach(prescription => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td class="text-center">${formatDate(prescription.prescription_date)}</td>
+                <td>Đơn thuốc - ${prescription.prescription_number}</td>
+                <td class="text-center">${(prescription.total_amount || 0).toLocaleString()} VNĐ</td>
+                <td class="text-center"><span class="badge bg-warning">Chưa thanh toán</span></td>
+                <td class="text-center"><button class="btn btn-sm btn-primary d-block mx-auto" onclick="createPaymentAndPay('${prescription.id}', '${prescription.prescription_number}')">Thanh toán</button></td>
+            `;
+            tbody.appendChild(row);
+        });
+
+        if (payments.length === 0 && unpaidPrescriptions.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Chưa có đơn thuốc nào cần thanh toán</td></tr>';
+        }
+
+        console.log('✅ Payments loaded successfully');
+
     } catch (error) {
+        console.error('❌ Error loading payments:', error);
         tbody.innerHTML = '<tr><td colspan="5" class="text-danger text-center">Lỗi tải thông tin thanh toán</td></tr>';
     }
+}
+
+function getPaymentStatusBadge(status) {
+    switch (status?.toLowerCase()) {
+        case 'paid': return 'bg-success';
+        case 'pending': return 'bg-warning';
+        case 'failed': return 'bg-danger';
+        case 'cancelled': return 'bg-secondary';
+        default: return 'bg-light text-dark';
+    }
+}
+
+function getPaymentStatusText(status) {
+    switch (status?.toLowerCase()) {
+        case 'paid': return 'Đã thanh toán';
+        case 'pending': return 'Đang xử lý';
+        case 'failed': return 'Thanh toán thất bại';
+        case 'cancelled': return 'Đã hủy';
+        default: return 'Chưa thanh toán';
+    }
+}
+
+function getPaymentAction(payment) {
+    switch (payment.status?.toLowerCase()) {
+        case 'paid':
+            return '<span class="text-success text-center d-block"><i class="fas fa-check"></i> Đã thanh toán</span>';
+        case 'pending':
+            return '<span class="text-warning text-center d-block"><i class="fas fa-clock"></i> Đang xử lý</span>';
+        case 'failed':
+            return '<button class="btn btn-sm btn-danger d-block mx-auto" onclick="retryPayment(\'' + payment.id + '\')">Thử lại</button>';
+        default:
+            return '<button class="btn btn-sm btn-primary d-block mx-auto" onclick="createPaymentAndPay(\'' + payment.prescription_id + '\', \'' + payment.prescription_number + '\')">Thanh toán</button>';
+    }
+}
+
+// Format date to DD-MM-YYYY
+function formatDate(dateString) {
+    if (!dateString) return 'N/A';
+
+    try {
+        // Handle different date formats
+        let date;
+        if (dateString.includes('T')) {
+            date = new Date(dateString.split('T')[0]);
+        } else if (dateString.includes('-')) {
+            date = new Date(dateString);
+        } else {
+            return dateString; // Return as is if not a standard format
+        }
+
+        if (isNaN(date.getTime())) return 'N/A';
+
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+
+        return `${day}-${month}-${year}`;
+    } catch (error) {
+        console.error('Error formatting date:', dateString, error);
+        return 'N/A';
+    }
+}
+
+// Payment functions
+async function createPaymentAndPay(prescriptionId, prescriptionNumber) {
+    try {
+        // First, create or get payment record
+        const paymentResponse = await axios.post('/api/payments/', {
+            prescription: prescriptionId,
+            prescription_number: prescriptionNumber,
+            amount: 0, // Will be calculated from prescription
+            status: 'PENDING'
+        });
+
+        const payment = paymentResponse.data;
+
+        // Proceed with VNPay payment
+        await payWithVNPay(payment.id);
+
+    } catch (error) {
+        console.error('Error creating payment:', error);
+        const errorMsg = error.response?.data?.error || error.response?.data?.prescription?.[0] || 'Không thể tạo thanh toán';
+        showAlert(errorMsg, 'danger');
+    }
+}
+
+async function payWithVNPay(paymentId) {
+    try {
+        const response = await axios.post('/api/payments/vnpay_create/', {
+            payment_id: paymentId
+        });
+
+        const vnpayData = response.data;
+
+        if (vnpayData.payment_url) {
+            // Redirect to VNPay
+            window.location.href = vnpayData.payment_url;
+        } else {
+            throw new Error('Không nhận được URL thanh toán từ VNPay');
+        }
+
+    } catch (error) {
+        console.error('Error with VNPay:', error);
+        const errorMsg = error.response?.data?.error || 'Không thể khởi tạo thanh toán VNPay';
+        showAlert(errorMsg, 'danger');
+    }
+}
+
+function retryPayment(paymentId) {
+    payWithVNPay(paymentId);
 }
 
 // Load provinces
@@ -1032,5 +1213,25 @@ document.getElementById('pp-save-profile').addEventListener('click', async funct
         // Error already handled by interceptor
     }
 });
+
+// Safe initialization to wait for axios
+function safeInitialize() {
+    console.log('🔄 Checking if axios is ready...');
+    if (typeof axios !== 'undefined') {
+        console.log('✅ Axios is ready, initializing portal...');
+        initializePortal();
+    } else {
+        console.log('⏳ Axios not ready, waiting...');
+        setTimeout(safeInitialize, 100);
+    }
+}
+
+// Check if HospitalApp.onAxiosReady exists, otherwise just initialize
+if (typeof HospitalApp !== 'undefined' && HospitalApp.onAxiosReady) {
+    HospitalApp.onAxiosReady(safeInitialize);
+} else {
+    // If HospitalApp is not available, just initialize immediately
+    safeInitialize();
+}
 </script>
 {% endblock %}

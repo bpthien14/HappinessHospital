@@ -50,12 +50,18 @@
                     </li>
 
                     <li class="nav-item">
+                        <a class="nav-link" href="{% url 'pharmacy_inventory' %}">
+                            <i class="fas fa-pills"></i> Kho thuốc
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
                         <a class="nav-link" href="{% url 'appointment_list' %}">
                             <i class="fas fa-calendar-alt"></i> Lịch khám
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#" id="prescriptions-link">
+                        <a class="nav-link" href="{% url 'pharmacist_prescriptions' %}" id="prescriptions-link">
                             <i class="fas fa-prescription-bottle"></i> Đơn thuốc
                         </a>
                     </li>

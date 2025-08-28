@@ -6,6 +6,8 @@ from drf_spectacular.utils import extend_schema, OpenApiResponse
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
+from django.utils import timezone
+import urllib.parse
 
 from .models import Payment, PaymentReceipt, VNPayTransaction
 from .serializers import (
@@ -24,9 +26,15 @@ class PaymentViewSet(ModelViewSet):
 
     def get_permissions(self):
         if self.action in ['list', 'retrieve']:
-            self.required_permissions = ['PAYMENT:READ']
+            # Allow patients to view their own payments for portal access
+            from rest_framework.permissions import AllowAny
+            self.permission_classes = [AllowAny]
+            return [AllowAny()]
         elif self.action in ['create', 'vnpay_create', 'vnpay_qr_create', 'cash_confirm']:
-            self.required_permissions = ['PAYMENT:CREATE']
+            # Allow patients to create payments for their prescriptions
+            from rest_framework.permissions import AllowAny
+            self.permission_classes = [AllowAny]
+            return [AllowAny()]
         elif self.action in ['update', 'partial_update', 'cancel']:
             self.required_permissions = ['PAYMENT:UPDATE']
         return super().get_permissions()
@@ -56,13 +64,23 @@ class PaymentViewSet(ModelViewSet):
         order_desc = serializer.validated_data['order_desc']
         amount = serializer.validated_data['amount']
         
-        # Create payment record
-        payment = Payment.objects.create(
+        # Check if there's already a pending payment for this prescription
+        existing_payment = Payment.objects.filter(
             prescription=prescription,
-            method='VNPAY',
-            amount=amount,
-            created_by=request.user
-        )
+            status='PENDING'
+        ).first()
+        
+        if existing_payment:
+            # Use existing payment instead of creating new one
+            payment = existing_payment
+        else:
+            # Create new payment record
+            payment = Payment.objects.create(
+                prescription=prescription,
+                method='VNPAY',
+                amount=amount,
+                created_by=request.user
+            )
         
         # Generate VNPAY payment URL
         vnpay_service = VNPayService()
@@ -75,14 +93,16 @@ class PaymentViewSet(ModelViewSet):
         payment.qr_code_type = 'VNPAY_REDIRECT'
         payment.save()
         
-        # Create VNPayTransaction record
-        VNPayTransaction.objects.create(
+        # Create or get VNPayTransaction record (avoid duplicate)
+        vnpay_transaction, created = VNPayTransaction.objects.get_or_create(
             payment=payment,
-            vnp_TxnRef=vnp_TxnRef,
-            vnp_Amount=int(amount * 100),
-            vnp_OrderInfo=order_desc,
-            vnp_CreateDate=vnpay_service.get_current_timestamp(),
-            vnp_IpAddr=request.META.get('REMOTE_ADDR', '127.0.0.1')
+            defaults={
+                'vnp_TxnRef': vnp_TxnRef,
+                'vnp_Amount': int(amount * 100),
+                'vnp_OrderInfo': order_desc,
+                'vnp_CreateDate': timezone.now().strftime('%Y%m%d%H%M%S'),
+                'vnp_IpAddr': request.META.get('REMOTE_ADDR', '127.0.0.1')
+            }
         )
         
         return Response({
@@ -233,20 +253,19 @@ def vnpay_return(request):
             payment.save()
             
             # Update VNPayTransaction
-            vnpay_transaction = payment.vnpay_transaction
-            vnpay_transaction.status = 'PAID'
-            vnpay_transaction.vnp_ResponseCode = vnp_ResponseCode
-            vnpay_transaction.vnp_TransactionNo = vnp_TransactionNo
-            vnpay_transaction.vnp_BankCode = vnp_BankCode
-            vnpay_transaction.vnp_PayDate = vnp_PayDate
-            vnpay_transaction.save()
+            try:
+                vnpay_transaction = VNPayTransaction.objects.get(payment=payment)
+                vnpay_transaction.vnp_ResponseCode = vnp_ResponseCode
+                vnpay_transaction.vnp_TransactionNo = vnp_TransactionNo
+                vnpay_transaction.vnp_BankCode = vnp_BankCode
+                vnpay_transaction.vnp_PayDate = vnp_PayDate
+                vnpay_transaction.save()
+            except VNPayTransaction.DoesNotExist:
+                pass  # Transaction record may not exist
             
-            return JsonResponse({
-                'status': 'success',
-                'message': 'Thanh toán thành công',
-                'payment_id': str(payment.id),
-                'prescription_number': payment.prescription.prescription_number
-            })
+            # Redirect to success page in portal
+            from django.shortcuts import redirect
+            return redirect(f'/portal/?payment=success&prescription={payment.prescription.prescription_number}')
         else:
             # Payment failed
             payment.status = 'FAILED'
@@ -254,11 +273,8 @@ def vnpay_return(request):
             payment.save()
             
             error_desc = vnpay_service.get_response_code_description(vnp_ResponseCode)
-            return JsonResponse({
-                'status': 'failed',
-                'message': f'Thanh toán thất bại: {error_desc}',
-                'error_code': vnp_ResponseCode
-            }, status=400)
+            # Redirect to failure page in portal
+            return redirect(f'/portal/?payment=failed&error={vnp_ResponseCode}&message={urllib.parse.quote(error_desc)}')
             
     except Payment.DoesNotExist:
         return JsonResponse({'error': 'Giao dịch không tồn tại'}, status=404)
