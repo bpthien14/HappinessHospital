@@ -29,6 +29,8 @@ function bootApplication() {
         return;
     }
     appInitialized = true;
+    // Thực thi chặn role-based ngay khi có thể (trước cả initializeAuth)
+    try { earlyRoleEnforcement(); } catch (e) { /* noop */ }
     // Nếu là trang công khai, chỉ cần cập nhật navbar và gắn sự kiện, không khởi chạy luồng auth
     if (isPublicPath() || window.__PUBLIC_PAGE__ === true) {
         try { toggleNavbarByAuth(); } catch (e) { /* noop */ }
@@ -94,6 +96,7 @@ function setupApp() {
     setupAxiosInterceptors();
     updateUserInfo();
     toggleNavbarByAuth();
+    try { applyRoleBasedRestrictions(); } catch (e) { /* noop */ }
     
     interceptorsReady = true;
     window.dispatchEvent(new CustomEvent('axiosInterceptorsReady'));
@@ -136,17 +139,7 @@ function setupAxiosInterceptors() {
                 }
             }
 
-            // Popup lỗi góc phải cho mọi lỗi còn lại (trừ khi tắt bằng config.silent)
-            try {
-                if (!original.silent) {
-                    const status = error.response?.status;
-                    const data = error.response?.data;
-                    const level = status && status >= 500 ? 'danger' : 'warning';
-                    const msg = friendlyError(data, `Yêu cầu thất bại${status ? ' ('+status+')' : ''}`);
-                    showAlert(msg, level);
-                }
-            } catch (e) { /* noop */ }
-            
+            // Bỏ cảnh báo mặc định (vàng) để tránh chồng thông báo. Các trang tự hiển thị lỗi cục bộ.
             return Promise.reject(error);
         }
     );
@@ -309,3 +302,76 @@ window.HospitalApp = {
     logout,
     showAlert
 };
+
+// ===== Role-based restrictions (Reception) =====
+function isReceptionUser() {
+    try {
+        return !!currentUser && currentUser.user_type === 'RECEPTION';
+    } catch (e) { return false; }
+}
+
+function isAllowedReceptionPath(pathname) {
+    try {
+        const path = (pathname.endsWith('/') ? pathname : pathname + '/').toLowerCase();
+        // Only allow patients and appointments pages for RECEPTION
+        return path.startsWith('/patients/') || path.startsWith('/appointments/');
+    } catch (e) { return false; }
+}
+
+function enforceReceptionRouteGuard() {
+    try {
+        if (!isAuthenticated || !isReceptionUser()) return;
+        const url = new URL(window.location.href);
+        if (!isAllowedReceptionPath(url.pathname)) {
+            window.location.replace('/patients/');
+        }
+    } catch (e) { /* noop */ }
+}
+
+function filterNavbarForReception() {
+    try {
+        if (!isReceptionUser()) return;
+        const nav = document.getElementById('navbarNav');
+        if (!nav) return;
+
+        // Chỉ lọc các mục ở menu chính bên trái, không đụng tới menu người dùng (đăng xuất)
+        const mainMenu = nav.querySelector('ul.navbar-nav.me-auto');
+        if (!mainMenu) return;
+
+        const links = mainMenu.querySelectorAll('a.nav-link');
+        links.forEach(a => {
+            const href = (a.getAttribute('href') || '').toLowerCase();
+            const isPatients = href.startsWith('/patients/');
+            const isAppointments = href.startsWith('/appointments/');
+            const isAllowed = isPatients || isAppointments;
+            // Ẩn prescriptions nhanh (#)
+            const isPrescriptionsQuick = a.id === 'prescriptions-link';
+            const navItem = a.closest('.nav-item');
+            if (navItem) {
+                if (!isAllowed || isPrescriptionsQuick) {
+                    navItem.style.display = 'none';
+                }
+            }
+        });
+    } catch (e) { /* noop */ }
+}
+
+function applyRoleBasedRestrictions() {
+    // Apply both navbar filtering and route guard
+    filterNavbarForReception();
+    enforceReceptionRouteGuard();
+}
+
+// Early enforcement before auth init: use cached user_data if any
+function earlyRoleEnforcement() {
+    try {
+        const raw = localStorage.getItem('user_data');
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        if (!parsed || !parsed.user_type) return;
+        if (!currentUser) currentUser = parsed;
+        // Also reflect auth state optimistically to run guards
+        if (!isAuthenticated) isAuthenticated = !!localStorage.getItem('access_token');
+        applyRoleBasedRestrictions();
+    } catch (e) { /* noop */ }
+}

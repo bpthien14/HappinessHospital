@@ -82,7 +82,7 @@
 
     .auth-header:hover::before {
         transform: rotate(45deg) translate(50px, 50px);
-    }
+        }
 
     .auth-header .fas.fa-hospital {
         font-size: 2rem;
@@ -271,6 +271,8 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
             const userType = (data.user && data.user.user_type) || null;
             if (userType === 'PATIENT') {
                 window.location.replace('/portal/');
+            } else if (userType === 'RECEPTION') {
+                window.location.replace('/patients/');
             } else {
                 window.location.replace('/dashboard/');
             }
@@ -282,10 +284,15 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
         console.error('❌ Login failed:', error);
         
         let errorMessage = 'Đăng nhập thất bại';
-        if (error.response?.data?.detail) {
-            errorMessage = error.response.data.detail;
+        const detail = error.response?.data?.detail;
+        if (detail) {
+            if (String(detail).trim() === 'No active account found with the given credentials') {
+                errorMessage = 'Tài khoản hoặc mật khẩu đăng nhập không hợp lệ';
+            } else {
+                errorMessage = detail;
+            }
         } else if (error.response?.status === 400) {
-            errorMessage = 'Tên đăng nhập hoặc mật khẩu không đúng';
+            errorMessage = 'Tài khoản hoặc mật khẩu đăng nhập không hợp lệ';
         } else if (error.response?.status === 500) {
             errorMessage = 'Lỗi server, vui lòng thử lại sau';
         }

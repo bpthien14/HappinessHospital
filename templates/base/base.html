@@ -102,8 +102,17 @@
             var hasToken = !!localStorage.getItem('access_token');
             var authNav = document.getElementById('auth-nav');
             var guestNav = document.getElementById('guest-nav');
-            if (authNav) { authNav.style.display = hasToken ? '' : 'none'; }
-            if (guestNav) { guestNav.style.display = hasToken ? 'none' : ''; }
+            if (authNav) { authNav.style.display = hasToken ? 'flex' : 'none'; }
+            if (guestNav) { guestNav.style.display = hasToken ? 'none' : 'flex'; }
+
+            // Re-bind logout if token exists
+            if (hasToken) {
+                var logoutBtn = document.getElementById('logout-btn');
+                if (logoutBtn && !logoutBtn.__bound) {
+                    logoutBtn.addEventListener('click', function(e){ e.preventDefault(); try { HospitalApp.logout(); } catch (err) { localStorage.clear(); location.href = '/login/'; } });
+                    logoutBtn.__bound = true;
+                }
+            }
 
             // Ẩn link trùng với trang hiện tại trên các trang công khai
             var path = (location.pathname.endsWith('/') ? location.pathname : location.pathname + '/').toLowerCase();
@@ -143,7 +152,7 @@
     <!-- Axios for API calls -->
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <!-- Custom JS (cache-busting) -->
-    <script src="{% load static %}{% static 'js/main.js' %}?v=3"></script>
+    <script src="{% load static %}{% static 'js/main.js' %}?v=4"></script>
     
     {% block extra_js %}{% endblock %}
 </body>

@@ -251,7 +251,6 @@ class AppointmentViewSet(ModelViewSet):
         appointment.confirmed_at = timezone.now()
         appointment.save()
         
-        # Track status change
         AppointmentStatusHistory.objects.create(
             appointment=appointment,
             old_status=old_status,
@@ -268,11 +267,13 @@ class AppointmentViewSet(ModelViewSet):
         """Check-in for appointment"""
         appointment = self.get_object()
         
-        if not appointment.can_checkin:
-            return Response(
-                {'error': 'Không thể check-in cho lịch hẹn này'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        # Cho phép check-in nếu trong khoảng [-30 phút, +60 phút] so với giờ hẹn và trạng thái phù hợp
+        now = datetime.now()
+        can_time = -1800 <= (now - appointment.appointment_datetime).total_seconds() <= 3600
+        if not (can_time and appointment.status in ['CONFIRMED', 'SCHEDULED']):
+            return Response({
+                'error': 'Không thể check-in. Chỉ cho phép trong vòng 30 phút trước đến 1 giờ sau giờ hẹn và trạng thái phải là Đã xác nhận hoặc Đã đặt lịch.'
+            }, status=status.HTTP_400_BAD_REQUEST)
         
         old_status = appointment.status
         appointment.status = 'CHECKED_IN'
