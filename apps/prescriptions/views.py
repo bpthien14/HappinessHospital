@@ -6,7 +6,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Q, Sum, Count, Case, When, F
 from django.utils import timezone
 from datetime import date, timedelta
-from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse, OpenApiExample
 
 from .models import (
     DrugCategory, Drug, Prescription, PrescriptionItem, 
@@ -262,7 +262,54 @@ class PrescriptionViewSet(ModelViewSet):
         responses={
             200: PrescriptionSerializer,
             400: OpenApiResponse(description='Prescription cannot be activated'),
-        }
+        },
+        examples=[
+            OpenApiExample(
+                'Activate success',
+                value={
+                    'id': '8a3b2b6f-1a2b-4dcd-9c6e-4d38f2a6a9b1',
+                    'prescription_number': 'DT20250101000001',
+                    'patient': '3e2cb3bc-6e2a-470f-9d38-1f38d6e1a111',
+                    'patient_name': 'Nguyễn Văn A',
+                    'patient_code': 'BN000123',
+                    'patient_phone': '0900000000',
+                    'doctor': '5f8c9e7a-1b2c-4d3e-8f9a-0b1c2d3e4f5a',
+                    'doctor_name': 'BS. Trần B',
+                    'doctor_specialization': 'Nội tổng quát',
+                    'appointment': None,
+                    'prescription_date': '2025-01-01T08:00:00Z',
+                    'prescription_type': 'OUTPATIENT',
+                    'prescription_type_display': 'Ngoại trú',
+                    'status': 'ACTIVE',
+                    'status_display': 'Có hiệu lực',
+                    'diagnosis': 'Viêm họng cấp',
+                    'notes': '',
+                    'special_instructions': 'Uống sau ăn',
+                    'valid_from': '2025-01-01T08:00:00Z',
+                    'valid_until': '2025-01-31T08:00:00Z',
+                    'is_valid': True,
+                    'days_until_expiry': 20,
+                    'total_amount': 150000,
+                    'insurance_covered_amount': 0,
+                    'patient_payment_amount': 150000,
+                    'items': [],
+                    'items_count': 0,
+                    'created_by': '11111111-2222-3333-4444-555555555555',
+                    'created_by_name': 'Điều phối viên',
+                    'created_at': '2025-01-01T08:00:00Z',
+                    'updated_at': '2025-01-01T08:10:00Z'
+                },
+                response_only=True
+            ),
+            OpenApiExample(
+                'Activate error (not DRAFT)',
+                value={
+                    'error': 'Chỉ có thể kích hoạt đơn thuốc ở trạng thái nháp'
+                },
+                status_codes=['400'],
+                response_only=True
+            ),
+        ]
     )
     @action(detail=True, methods=['post'])
     def activate(self, request, pk=None):
@@ -299,7 +346,32 @@ class PrescriptionViewSet(ModelViewSet):
         responses={
             200: PrescriptionSerializer,
             400: OpenApiResponse(description='Prescription cannot be cancelled'),
-        }
+        },
+        examples=[
+            OpenApiExample(
+                'Cancel request',
+                value={'reason': 'Bệnh nhân đổi phác đồ'},
+                request_only=True
+            ),
+            OpenApiExample(
+                'Cancel success',
+                value={
+                    'id': '8a3b2b6f-1a2b-4dcd-9c6e-4d38f2a6a9b1',
+                    'status': 'CANCELLED',
+                    'status_display': 'Đã hủy',
+                    'notes': '\n\nĐã hủy: Bệnh nhân đổi phác đồ'
+                },
+                response_only=True
+            ),
+            OpenApiExample(
+                'Cancel error (fully dispensed or already cancelled)',
+                value={
+                    'error': 'Không thể hủy đơn thuốc đã cấp đầy đủ hoặc đã hủy'
+                },
+                status_codes=['400'],
+                response_only=True
+            )
+        ]
     )
     @action(detail=True, methods=['post'])
     def cancel(self, request, pk=None):
