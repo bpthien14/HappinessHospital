@@ -178,6 +178,52 @@
 
 {% block content %}
 <script>window.__PUBLIC_PAGE__ = true;</script>
+<script>
+async function checkTokenAndRedirect() {
+    try {
+        const token = localStorage.getItem('access_token');
+        if (!token) return;
+
+        // Verify token is still valid by making a quick API call
+        try {
+            const response = await axios.get('/api/auth/user/', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            
+            // Token is valid, proceed with redirect
+            const user = response.data || JSON.parse(localStorage.getItem('user_data') || '{}');
+            const userType = user && user.user_type;
+            const roles = (user && Array.isArray(user.roles)) ? user.roles : [];
+            const isReceptionist = (userType === 'RECEPTION') || roles.includes('Receptionist') || roles.includes('RECEPTION');
+            const isPharmacist = (userType === 'PHARMACIST') || roles.includes('Pharmacist') || roles.includes('PHARMACIST');
+            
+            if (userType === 'PATIENT') {
+                window.location.replace('/portal/');
+            } else if (isReceptionist) {
+                window.location.replace('/patients/');
+            } else if (isPharmacist) {
+                window.location.replace('/prescriptions/');
+            } else {
+                window.location.replace('/dashboard/');
+            }
+        } catch (apiError) {
+            // Token is invalid/expired, clear localStorage and stay on login page
+            console.log('Token expired or invalid, clearing storage');
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+            localStorage.removeItem('user_data');
+        }
+    } catch (e) { 
+        // Any other error, clear storage to be safe
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        localStorage.removeItem('user_data');
+    }
+}
+
+// Call the check function
+checkTokenAndRedirect();
+</script>
 <div class="auth-container">
     <div class="auth-card">
                     <div class="auth-header">
@@ -269,10 +315,15 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
         // Redirect theo loại người dùng
         try {
             const userType = (data.user && data.user.user_type) || null;
+            const roles = (data.user && Array.isArray(data.user.roles)) ? data.user.roles : [];
+            const isReceptionist = (userType === 'RECEPTION') || roles.includes('Receptionist') || roles.includes('RECEPTION');
+            const isPharmacist = (userType === 'PHARMACIST') || roles.includes('Pharmacist') || roles.includes('PHARMACIST');
             if (userType === 'PATIENT') {
                 window.location.replace('/portal/');
-            } else if (userType === 'RECEPTION') {
+            } else if (isReceptionist) {
                 window.location.replace('/patients/');
+            } else if (isPharmacist) {
+                window.location.replace('/prescriptions/');
             } else {
                 window.location.replace('/dashboard/');
             }

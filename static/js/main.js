@@ -360,6 +360,8 @@ function applyRoleBasedRestrictions() {
     // Apply both navbar filtering and route guard
     filterNavbarForReception();
     enforceReceptionRouteGuard();
+    filterNavbarForPharmacist();
+    enforcePharmacistRouteGuard();
 }
 
 // Early enforcement before auth init: use cached user_data if any
@@ -373,5 +375,49 @@ function earlyRoleEnforcement() {
         // Also reflect auth state optimistically to run guards
         if (!isAuthenticated) isAuthenticated = !!localStorage.getItem('access_token');
         applyRoleBasedRestrictions();
+    } catch (e) { /* noop */ }
+}
+
+// ===== Role-based restrictions (Pharmacist) =====
+function isPharmacistUser() {
+    try {
+        if (!currentUser) return false;
+        if (currentUser.user_type === 'PHARMACIST') return true;
+        const roles = Array.isArray(currentUser.roles) ? currentUser.roles : [];
+        return roles.includes('Pharmacist') || roles.includes('PHARMACIST');
+    } catch (e) { return false; }
+}
+
+function isAllowedPharmacistPath(pathname) {
+    try {
+        const path = (pathname.endsWith('/') ? pathname : pathname + '/').toLowerCase();
+        return path.startsWith('/pharmacy/') || path.startsWith('/prescriptions/');
+    } catch (e) { return false; }
+}
+
+function enforcePharmacistRouteGuard() {
+    try {
+        if (!isAuthenticated || !isPharmacistUser()) return;
+        const url = new URL(window.location.href);
+        if (!isAllowedPharmacistPath(url.pathname)) {
+            window.location.replace('/pharmacy/');
+        }
+    } catch (e) { /* noop */ }
+}
+
+function filterNavbarForPharmacist() {
+    try {
+        if (!isPharmacistUser()) return;
+        const nav = document.getElementById('navbarNav');
+        if (!nav) return;
+        const mainMenu = nav.querySelector('ul.navbar-nav.me-auto');
+        if (!mainMenu) return;
+        const links = mainMenu.querySelectorAll('a.nav-link');
+        links.forEach(a => {
+            const href = (a.getAttribute('href') || '').toLowerCase();
+            const keep = href.startsWith('/pharmacy/') || a.id === 'prescriptions-link';
+            const navItem = a.closest('.nav-item');
+            if (navItem) navItem.style.display = keep ? '' : 'none';
+        });
     } catch (e) { /* noop */ }
 }

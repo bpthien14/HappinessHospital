@@ -1,0 +1,314 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Kho thuốc - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-pills"></i> Quản lý kho thuốc</h2>
+    <div>
+        <button class="btn btn-primary" id="btn-add-drug" data-bs-toggle="modal" data-bs-target="#addDrugModal">
+            <i class="fas fa-plus"></i> Thêm thuốc
+        </button>
+    </div>
+    
+    
+</div>
+
+<!-- Search and Filter -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form id="search-form" class="row g-3">
+            <div class="col-md-4">
+                <label for="search-query" class="form-label">Tìm kiếm</label>
+                <input type="text" class="form-control" id="search-query" placeholder="Tên thuốc, hoạt chất, mã thuốc...">
+            </div>
+            <div class="col-md-3">
+                <label for="category-filter" class="form-label">Nhóm thuốc</label>
+                <select class="form-select" id="category-filter">
+                    <option value="">Tất cả</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="stock-filter" class="form-label">Tồn kho</label>
+                <select class="form-select" id="stock-filter">
+                    <option value="">Tất cả</option>
+                    <option value="low">Sắp hết</option>
+                    <option value="ok">Bình thường</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">&nbsp;</label>
+                <button type="submit" class="btn btn-outline-primary d-block">
+                    <i class="fas fa-search"></i> Tìm kiếm
+                </button>
+            </div>
+        </form>
+    </div>
+    
+    
+</div>
+
+<!-- Drug Table -->
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover text-center align-middle" id="drugs-table">
+                <thead class="table-light text-center">
+                    <tr>
+                        <th>Mã</th>
+                        <th>Tên thuốc</th>
+                        <th>Hoạt chất</th>
+                        <th>Dạng</th>
+                        <th>Hàm lượng</th>
+                        <th>Tồn kho</th>
+                        <th>Đơn giá</th>
+                        <th>Trạng thái</th>
+                        <th>Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody id="drugs-tbody" class="text-center">
+                    <!-- Data will be loaded here -->
+                </tbody>
+            </table>
+        </div>
+
+        <nav id="pagination-nav" class="mt-3">
+            <ul class="pagination justify-content-center" id="pagination">
+            </ul>
+        </nav>
+    </div>
+</div>
+
+<!-- Add Drug Modal -->
+<div class="modal fade" id="addDrugModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Thêm thuốc mới</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="add-drug-form" novalidate>
+                <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+                    <!-- Thông tin cơ bản -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-primary text-white">
+                            <h6 class="mb-0"><i class="fas fa-capsules me-2"></i>Thông tin cơ bản</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold">Mã thuốc *</label>
+                                    <input type="text" class="form-control" id="dg-code" name="code" required>
+                                </div>
+                                <div class="col-md-8">
+                                    <label class="form-label fw-bold">Tên thuốc *</label>
+                                    <input type="text" class="form-control" id="dg-name" name="name" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">Hoạt chất *</label>
+                                    <input type="text" class="form-control" id="dg-generic_name" name="generic_name" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">Thương hiệu</label>
+                                    <input type="text" class="form-control" id="dg-brand_name" name="brand_name">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Phân loại & Thuộc tính -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-info text-white">
+                            <h6 class="mb-0"><i class="fas fa-tags me-2"></i>Phân loại & Thuộc tính</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">Nhóm thuốc *</label>
+                                    <select class="form-select" id="dg-category" name="category" required></select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label fw-bold">Dạng bào chế *</label>
+                                    <select class="form-select" id="dg-dosage_form" name="dosage_form" required></select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label fw-bold">Đơn vị *</label>
+                                    <select class="form-select" id="dg-unit" name="unit" required></select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold">Hàm lượng *</label>
+                                    <input type="text" class="form-control" id="dg-strength" name="strength" required>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Giá & Tồn kho -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-warning text-dark">
+                            <h6 class="mb-0"><i class="fas fa-dolly me-2"></i>Giá & Tồn kho</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold">Đơn giá (VNĐ) *</label>
+                                    <input type="number" class="form-control" id="dg-unit_price" name="unit_price" required>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold">Giá BHYT (VNĐ)</label>
+                                    <input type="number" class="form-control" id="dg-insurance_price" name="insurance_price">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold">Tồn kho hiện tại *</label>
+                                    <input type="number" class="form-control" id="dg-current_stock" name="current_stock" required>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold">Tồn kho tối thiểu *</label>
+                                    <input type="number" class="form-control" id="dg-minimum_stock" name="minimum_stock" required>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold">Tồn kho tối đa *</label>
+                                    <input type="number" class="form-control" id="dg-maximum_stock" name="maximum_stock" required>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sản xuất & Xuất xứ -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-secondary text-white">
+                            <h6 class="mb-0"><i class="fas fa-industry me-2"></i>Sản xuất & Xuất xứ</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">Nhà sản xuất *</label>
+                                    <input type="text" class="form-control" id="dg-manufacturer" name="manufacturer" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">Nước sản xuất *</label>
+                                    <input type="text" class="form-control" id="dg-country_of_origin" name="country_of_origin" required>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chỉ định sử dụng -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-success text-white">
+                            <h6 class="mb-0"><i class="fas fa-prescription-bottle-alt me-2"></i>Chỉ định sử dụng</h6>
+                        </div>
+                        <div class="card-body">
+                            <label class="form-label fw-bold">Chỉ định sử dụng *</label>
+                            <textarea class="form-control" id="dg-indication" name="indication" rows="2" required></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-primary" id="save-drug-btn" disabled>Lưu thuốc</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="{% load static %}{% static 'js/pharmacy.js' %}"></script>
+<!-- Edit Drug Modal -->
+<div class="modal fade" id="editDrugModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Chỉnh sửa thuốc</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="edit-drug-form" novalidate>
+                <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+                    <div id="ed-loading" class="text-center py-4" style="display:none;">
+                        <div class="spinner-border text-primary" role="status"></div>
+                    </div>
+                    <div id="ed-error" class="alert alert-danger d-none"></div>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Mã thuốc *</label>
+                            <input type="text" class="form-control" id="ed-code" name="code" required>
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label fw-bold">Tên thuốc *</label>
+                            <input type="text" class="form-control" id="ed-name" name="name" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Hoạt chất *</label>
+                            <input type="text" class="form-control" id="ed-generic_name" name="generic_name" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Thương hiệu</label>
+                            <input type="text" class="form-control" id="ed-brand_name" name="brand_name">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Nhóm thuốc *</label>
+                            <select class="form-select" id="ed-category" name="category" required></select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Dạng bào chế *</label>
+                            <select class="form-select" id="ed-dosage_form" name="dosage_form" required></select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Đơn vị *</label>
+                            <select class="form-select" id="ed-unit" name="unit" required></select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Hàm lượng *</label>
+                            <input type="text" class="form-control" id="ed-strength" name="strength" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Đơn giá (VNĐ) *</label>
+                            <input type="number" class="form-control" id="ed-unit_price" name="unit_price" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Giá BHYT (VNĐ)</label>
+                            <input type="number" class="form-control" id="ed-insurance_price" name="insurance_price">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Tồn kho hiện tại *</label>
+                            <input type="number" class="form-control" id="ed-current_stock" name="current_stock" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Tồn kho tối thiểu *</label>
+                            <input type="number" class="form-control" id="ed-minimum_stock" name="minimum_stock" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Tồn kho tối đa *</label>
+                            <input type="number" class="form-control" id="ed-maximum_stock" name="maximum_stock" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Nhà sản xuất *</label>
+                            <input type="text" class="form-control" id="ed-manufacturer" name="manufacturer" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Nước sản xuất *</label>
+                            <input type="text" class="form-control" id="ed-country_of_origin" name="country_of_origin" required>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label fw-bold">Chỉ định sử dụng *</label>
+                            <textarea class="form-control" id="ed-indication" name="indication" rows="2" required></textarea>
+                        </div>
+                        <div class="col-md-12">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="ed-is_active">
+                                <label class="form-check-label fw-bold" for="ed-is_active">Kích hoạt</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                    <button type="submit" class="btn btn-primary" id="update-drug-btn" disabled>Lưu thay đổi</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+
