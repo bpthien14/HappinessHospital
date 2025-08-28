@@ -22,8 +22,8 @@
 - **status**: Trạng thái đơn thuốc. Giá trị:
   - `DRAFT`: Nháp
   - `ACTIVE`: Có hiệu lực
-  - `PARTIALLY_DISPENSED`: Cấp thuốc một phần
-  - `FULLY_DISPENSED`: Đã cấp thuốc đầy đủ
+  <!-- - `PARTIALLY_DISPENSED`: Cấp thuốc một phần
+  - `FULLY_DISPENSED`: Đã cấp thuốc đầy đủ -->
   - `CANCELLED`: Đã hủy
   - `EXPIRED`: Hết hạn
 - **status_display**: Nhãn hiển thị của trạng thái.
