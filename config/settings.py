@@ -4,7 +4,8 @@ from datetime import timedelta
 
 # Load environment variables from .env file
 from dotenv import load_dotenv
-load_dotenv()
+# Ensure .env is loaded from project root explicitly
+load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent / '.env')
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent

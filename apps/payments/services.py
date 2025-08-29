@@ -16,9 +16,28 @@ class VNPayService:
         self.vnp_Url = "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html"
         self.vnp_QR_Url = "https://sandbox.vnpayment.vn/paymentv2/qr"  # QR endpoint
         self.vnp_ReturnUrl = getattr(settings, 'VNPAY_RETURN_URL', None) or 'http://localhost:8000/api/payments/vnpay_return/'
-        self.vnp_IpnUrl = getattr(settings, 'VNPAY_IPN_URL', None) or 'http://localhost:8000/api/payments/vnpay_ipn/'
+        # IPN URL không phải là tham số bắt buộc gửi lên VNPAY; hệ thống VNPAY sẽ dùng cấu hình tại merchant portal
+        self.vnp_IpnUrl = getattr(settings, 'VNPAY_IPN_URL', None)
+        try:
+            if getattr(settings, 'DEBUG', False):
+                import logging
+                logging.getLogger(__name__).info(
+                    "[VNPAY] Config loaded: TMN=%s, HASH=%s, RETURN=%s, IPN=%s",
+                    (self.vnp_TmnCode[-4:] if self.vnp_TmnCode else 'unset'),
+                    'set' if bool(self.vnp_HashSecret) else 'unset',
+                    self.vnp_ReturnUrl,
+                    self.vnp_IpnUrl or 'unset'
+                )
+        except Exception:
+            pass
     
-    def create_payment_url(self, payment, order_desc):
+    def _sanitize_params(self, params: dict) -> list:
+        # Loại bỏ các key có giá trị None/"" để tránh lỗi checksum do tham số rỗng
+        filtered = {k: v for k, v in params.items() if v not in [None, ""]}
+        # Sắp xếp theo tên tham số
+        return sorted(filtered.items())
+
+    def create_payment_url(self, payment, order_desc, client_ip: str | None = None):
         """Create VNPAY payment URL"""
         
         # Generate unique transaction reference
@@ -31,22 +50,20 @@ class VNPayService:
             'vnp_TmnCode': self.vnp_TmnCode,
             'vnp_Amount': int(payment.amount * 100),  # VNPAY requires x100
             'vnp_CurrCode': 'VND',
-            'vnp_BankCode': '',  # Let user choose
             'vnp_TxnRef': vnp_TxnRef,
             'vnp_OrderInfo': order_desc,
             'vnp_OrderType': 'other',
             'vnp_Locale': 'vn',
             'vnp_ReturnUrl': self.vnp_ReturnUrl,
-            'vnp_IpnUrl': self.vnp_IpnUrl,
             'vnp_CreateDate': timezone.now().strftime('%Y%m%d%H%M%S'),
-            'vnp_IpAddr': '127.0.0.1',  # Should get from request
+            'vnp_IpAddr': client_ip or '127.0.0.1',
         }
         
-        # Sort parameters alphabetically
-        vnp_Params = sorted(vnp_Params.items())
+        # Remove empty params and sort
+        vnp_Params = self._sanitize_params(vnp_Params)
         
-        # Create hash string
-        hash_data = "&".join([f"{k}={v}" for k, v in vnp_Params])
+        # Create hash string (values must be URL-encoded per VNPAY spec)
+        hash_data = "&".join([f"{k}={urllib.parse.quote_plus(str(v))}" for k, v in vnp_Params])
         
         # Generate secure hash
         secureHash = hmac.new(
@@ -55,7 +72,8 @@ class VNPayService:
             hashlib.sha512
         ).hexdigest()
         
-        # Add secure hash to parameters
+        # Add secure hash type and hash to parameters (do NOT include in hash string)
+        vnp_Params.append(('vnp_SecureHashType', 'HmacSHA512'))
         vnp_Params.append(('vnp_SecureHash', secureHash))
         
         # Create payment URL
@@ -63,31 +81,9 @@ class VNPayService:
         
         return payment_url, vnp_TxnRef
     
-    def verify_response(self, params):
-        """Verify VNPAY response signature"""
-        if not params:
-            return False
-            
-        # Get secure hash from response
-        vnp_SecureHash = params.get('vnp_SecureHash')
-        if not vnp_SecureHash:
-            return False
-        
-        # Create params without secure hash
-        verify_params = {k: v for k, v in params.items() if k != 'vnp_SecureHash'}
-        verify_params = sorted(verify_params.items())
-        
-        # Create hash string
-        hash_data = "&".join([f"{k}={v}" for k, v in verify_params])
-        
-        # Generate expected hash
-        expected_hash = hmac.new(
-            self.vnp_HashSecret.encode('utf-8'),
-            hash_data.encode('utf-8'),
-            hashlib.sha512
-        ).hexdigest()
-        
-        return expected_hash == vnp_SecureHash
+    def verify_payment_response(self, params):
+        """Verify VNPAY payment response signature (for compatibility)"""
+        return self.verify_response(params)
     
     def get_response_code_description(self, code):
         """Get VNPay response code description"""
@@ -108,7 +104,7 @@ class VNPayService:
         }
         return codes.get(code, f'Lỗi không xác định (mã: {code})')
     
-    def create_qr_code(self, payment, order_desc):
+    def create_qr_code(self, payment, order_desc, client_ip: str | None = None):
         """Create VNPAY QR Code for mobile payment"""
         
         # Generate unique transaction reference
@@ -126,18 +122,17 @@ class VNPayService:
             'vnp_OrderType': 'other',
             'vnp_Locale': 'vn',
             'vnp_ReturnUrl': self.vnp_ReturnUrl,
-            'vnp_IpnUrl': self.vnp_IpnUrl,
-            'vnp_CreateDate': timezone.now().strftime('%Y%m%d%H%M%SS'),
-            'vnp_IpAddr': '127.0.0.1',
+            'vnp_CreateDate': timezone.now().strftime('%Y%m%d%H%M%S'),
+            'vnp_IpAddr': client_ip or '127.0.0.1',
             'vnp_QRCode': '1',  # Enable QR Code
             'vnp_QRCodeType': '1',  # 1: VNPAY QR, 2: VietQR
         }
         
-        # Sort parameters alphabetically
-        vnp_Params = sorted(vnp_Params.items())
+        # Remove empty params and sort
+        vnp_Params = self._sanitize_params(vnp_Params)
         
-        # Create hash string
-        hash_data = "&".join([f"{k}={v}" for k, v in vnp_Params])
+        # Create hash string (values must be URL-encoded per VNPAY spec)
+        hash_data = "&".join([f"{k}={urllib.parse.quote_plus(str(v))}" for k, v in vnp_Params])
         
         # Generate secure hash
         secureHash = hmac.new(
@@ -146,7 +141,8 @@ class VNPayService:
             hashlib.sha512
         ).hexdigest()
         
-        # Add secure hash to parameters
+        # Add secure hash type and hash to parameters
+        vnp_Params.append(('vnp_SecureHashType', 'HmacSHA512'))
         vnp_Params.append(('vnp_SecureHash', secureHash))
         
         # Create QR Code URL
@@ -203,4 +199,4 @@ class VNPayService:
     
     def get_current_timestamp(self):
         """Get current timestamp in VNPAY format"""
-        return timezone.now().strftime('%Y%m%d%H%M%SS')
+        return timezone.now().strftime('%Y%m%d%H%M%S')
