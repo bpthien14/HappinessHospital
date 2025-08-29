@@ -1,0 +1,292 @@
+version: '3.8'
+
+services:
+  # API Gateway
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - auth-service
+      - patients-service
+      - appointments-service
+      - prescriptions-service
+      - payments-service
+      - notifications-service
+    networks:
+      - hospital-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Event Bus
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - hospital-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Auth Service
+  auth-service:
+    build: ./auth-service
+    ports:
+      - "8001:8001"
+    environment:
+      - DATABASE_URL=postgresql://fe-phuocthien@localhost:5432/hospital_auth
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-your-secret-key-here}
+      - JWT_ALGORITHM=HS256
+      - SERVICE_NAME=auth
+      - DEBUG=True
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - hospital-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Patients Service
+  patients-service:
+    build: ./patients-service
+    ports:
+      - "8002:8002"
+    environment:
+      - DATABASE_URL=postgresql://fe-phuocthien@localhost:5432/hospital_patients
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - AUTH_SERVICE_URL=http://auth-service:8001
+      - SERVICE_NAME=patients
+      - DEBUG=True
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+    networks:
+      - hospital-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Appointments Service
+  appointments-service:
+    build: ./appointments-service
+    ports:
+      - "8003:8003"
+    environment:
+      - DATABASE_URL=postgresql://fe-phuocthien@localhost:5432/hospital_appointments
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - AUTH_SERVICE_URL=http://auth-service:8001
+      - PATIENTS_SERVICE_URL=http://patients-service:8002
+      - SERVICE_NAME=appointments
+      - DEBUG=True
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+      patients-service:
+        condition: service_healthy
+    networks:
+      - hospital-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Prescriptions Service
+  prescriptions-service:
+    build: ./prescriptions-service
+    ports:
+      - "8004:8004"
+    environment:
+      - DATABASE_URL=postgresql://fe-phuocthien@localhost:5432/hospital_prescriptions
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - AUTH_SERVICE_URL=http://auth-service:8001
+      - PATIENTS_SERVICE_URL=http://patients-service:8002
+      - PAYMENTS_SERVICE_URL=http://payments-service:8005
+      - SERVICE_NAME=prescriptions
+      - DEBUG=True
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+      patients-service:
+        condition: service_healthy
+      payments-service:
+        condition: service_healthy
+    networks:
+      - hospital-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Payments Service
+  payments-service:
+    build: ./payments-service
+    ports:
+      - "8005:8005"
+    environment:
+      - DATABASE_URL=postgresql://fe-phuocthien@localhost:5432/hospital_payments
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - AUTH_SERVICE_URL=http://auth-service:8001
+      - VNPAY_TMN_CODE=${VNPAY_TMN_CODE:-VGGT78DX}
+      - VNPAY_HASH_SECRET=${VNPAY_HASH_SECRET:-20UY4ZYMA23D4J41X6M92ANRV5YPSGU}
+      - VNPAY_RETURN_URL=${VNPAY_RETURN_URL:-http://localhost/api/payments/vnpay_return/}
+      - VNPAY_IPN_URL=${VNPAY_IPN_URL:-http://localhost/api/payments/vnpay_ipn/}
+      - SERVICE_NAME=payments
+      - DEBUG=True
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+    networks:
+      - hospital-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8005/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Notifications Service
+  notifications-service:
+    build: ./notifications-service
+    ports:
+      - "8006:8006"
+    environment:
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - AUTH_SERVICE_URL=http://auth-service:8001
+      - SERVICE_NAME=notifications
+      - DEBUG=True
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+    networks:
+      - hospital-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8006/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Databases - Using Local PostgreSQL (commented out)
+  # auth-db:
+  #   image: postgres:15
+  #   environment:
+  #     - POSTGRES_DB=hospital_auth
+  #     - POSTGRES_USER=postgres
+  #     - POSTGRES_PASSWORD=password
+  #   volumes:
+  #     - auth_db_data:/var/lib/postgresql/data
+  #   networks:
+  #     - hospital-network
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U postgres -d hospital_auth"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+
+  # patients-db:
+  #   image: postgres:15
+  #   environment:
+  #     - POSTGRES_DB=hospital_patients
+  #     - POSTGRES_USER=postgres
+  #     - POSTGRES_PASSWORD=password
+  #   volumes:
+  #     - patients_db_data:/var/lib/postgresql/data
+  #   networks:
+  #     - hospital-network
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U postgres -d hospital_patients"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+
+  # appointments-db:
+  #   image: postgres:15
+  #     - POSTGRES_DB=hospital_appointments
+  #     - POSTGRES_USER=postgres
+  #     - POSTGRES_PASSWORD=password
+  #   volumes:
+  #     - appointments_db_data:/var/lib/postgresql/data
+  #   networks:
+  #     - hospital-network
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U postgres -d hospital_appointments"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+
+  # prescriptions-db:
+  #   image: postgres:15
+  #   environment:
+  #     - POSTGRES_DB=hospital_prescriptions
+  #     - POSTGRES_USER=postgres
+  #     - POSTGRES_PASSWORD=password
+  #   volumes:
+  #     - appointments_db_data:/var/lib/postgresql/data
+  #   networks:
+  #     - hospital-network
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U postgres -d hospital_prescriptions"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+
+  # payments-db:
+  #   image: postgres:15
+  #   environment:
+  #     - POSTGRES_DB=hospital_payments
+  #     - POSTGRES_USER=postgres
+  #     - POSTGRES_PASSWORD=password
+  #   volumes:
+  #     - payments_db_data:/var/lib/postgresql/data
+  #   networks:
+  #     - hospital-network
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U postgres -d hospital_payments"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+
+volumes:
+  # Database volumes commented out - using local PostgreSQL
+  # auth_db_data:
+  # patients_db_data:
+  # appointments_db_data:
+  # prescriptions_db_data:
+  # payments_db_data:
+  rabbitmq_data:
+
+networks:
+  hospital-network:
+    driver: bridge
