@@ -83,71 +83,364 @@
 <div class="modal fade rx-modal" id="dispenseModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Chi tiết đơn thuốc <span class="text-muted" id="dp-title-number"></span></h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-prescription-bottle me-2"></i>Chi tiết đơn thuốc 
+                    <span class="text-white-50" id="dp-title-number"></span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
+                <!-- Loading -->
                 <div id="dp-loading" class="text-center py-4" style="display:none;">
-                    <div class="spinner-border text-primary"></div>
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Đang tải...</span>
+                    </div>
+                    <p class="mt-2 text-muted">Đang tải thông tin đơn thuốc...</p>
                 </div>
-                <div id="dp-error" class="alert alert-danger d-none"></div>
+                
+                <!-- Error -->
+                <div id="dp-error" class="alert alert-danger d-none">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <span>Có lỗi xảy ra</span>
+                </div>
+                
+                <!-- Content -->
                 <div id="dp-content" class="d-none">
-                    <div class="row g-3 mb-2">
-                        <div class="col-md-3">
-                            <div class="small text-muted">Bệnh nhân</div>
-                            <div class="fw-semibold" id="dp-patient">-</div>
+                    <!-- Thông tin chính -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <div class="card h-100">
+                                <div class="card-header bg-success text-white py-2">
+                                    <h6 class="mb-0"><i class="fas fa-user me-2"></i>Thông tin bệnh nhân</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row g-2">
+                                        <div class="col-12">
+                                            <div class="small text-muted">Họ và tên</div>
+                                            <div class="fw-bold text-success" id="dp-patient">-</div>
+                                            <div class="text-muted small" id="dp-patient-code">-</div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="small text-muted">Điện thoại</div>
+                                            <div id="dp-phone">-</div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="small text-muted">Ngày sinh</div>
+                                            <div id="dp-dob">-</div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="small text-muted">Giới tính</div>
+                                            <div id="dp-gender">-</div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="small text-muted">CCCD</div>
+                                            <div id="dp-citizen-id">-</div>
+                                        </div>
+                                        <div class="col-12">
+                                            <div class="small text-muted">Địa chỉ</div>
+                                            <div class="rx-cell" id="dp-address">-</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="col-md-3">
-                            <div class="small text-muted">Bác sĩ</div>
-                            <div class="fw-semibold" id="dp-doctor">-</div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="small text-muted">Trạng thái</div>
-                            <div>
-                                <span class="badge" id="dp-status" style="font-size: .9rem; padding:.5rem .6rem; border-radius: 999px;">
-                                    -
-                                </span>
+                        <div class="col-md-6">
+                            <div class="card h-100">
+                                <div class="card-header bg-info text-white py-2">
+                                    <h6 class="mb-0"><i class="fas fa-user-md me-2"></i>Thông tin đơn thuốc</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row g-2">
+                                        <div class="col-12">
+                                            <div class="small text-muted">Bác sĩ kê đơn</div>
+                                            <div class="fw-bold text-info" id="dp-doctor">-</div>
+                                            <div class="text-muted small" id="dp-specialty">-</div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="small text-muted">Ngày kê đơn</div>
+                                            <div id="dp-date">-</div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="small text-muted">Mã đơn thuốc</div>
+                                            <div class="fw-bold" id="dp-prescription-code">-</div>
+                                        </div>
+                                        <div class="col-12">
+                                            <div class="small text-muted">Chẩn đoán</div>
+                                            <div class="p-2 bg-light rounded" id="dp-diagnosis">-</div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                    <div class="row g-3 mb-3">
+                    
+                    <!-- Danh sách thuốc -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-warning text-dark py-2">
+                            <h6 class="mb-0"><i class="fas fa-pills me-2"></i>Danh sách thuốc</h6>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0 rx-table">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th style="width: 40%">Thuốc</th>
+                                            <th class="text-center" style="width: 12%">Số lượng</th>
+                                            <th class="text-center" style="width: 16%">Liều dùng</th>
+                                            <th class="text-center" style="width: 12%">Đơn giá</th>
+                                            <th class="text-center" style="width: 12%">Thành tiền</th>
+                                            <th class="text-center" style="width: 8%">Thao tác</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="dp-items">
+                                        <!-- Items will be loaded here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Tổng tiền -->
+                    <div class="row g-3">
                         <div class="col-md-4">
-                            <div class="small text-muted">SĐT</div>
-                            <div id="dp-phone">-</div>
+                            <div class="card bg-light">
+                                <div class="card-body text-center py-3">
+                                    <div class="small text-muted mb-1">Tổng tiền thuốc</div>
+                                    <div class="h5 mb-0 text-primary fw-bold rx-amount" id="dp-total">0 VNĐ</div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="col-md-8">
-                            <div class="small text-muted">Địa chỉ</div>
-                            <div class="rx-cell" id="dp-address">-</div>
+                        <div class="col-md-4">
+                            <div class="card bg-light">
+                                <div class="card-body text-center py-3">
+                                    <div class="small text-muted mb-1">BHYT chi trả</div>
+                                    <div class="h5 mb-0 text-success fw-bold" id="dp-insurance">0 VNĐ</div>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                    <div class="border rounded p-2 mb-3 bg-light d-flex justify-content-between align-items-center">
-                        <div class="fw-semibold">Tổng tiền</div>
-                        <div class="fs-5 fw-bold rx-amount" id="dp-total">0</div>
-                    </div>
-                    <div class="table-responsive">
-                        <table class="table table-sm align-middle rx-table">
-                            <thead>
-                                <tr>
-                                    <th>Thuốc</th>
-                                    <th style="text-align:center;">Số lượng</th>
-                                    <th style="text-align:center;">Đơn giá</th>
-                                    <th style="text-align:center;">Thành tiền</th>
-                                </tr>
-                            </thead>
-                            <tbody id="dp-items"></tbody>
-                        </table>
+                        <div class="col-md-4">
+                            <div class="card bg-light">
+                                <div class="card-body text-center py-3">
+                                    <div class="small text-muted mb-1">Bệnh nhân trả</div>
+                                    <div class="h5 mb-0 text-danger fw-bold" id="dp-patient-pay">0 VNĐ</div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Đóng
+                </button>
+                <button type="button" class="btn btn-success" id="dp-dispense-btn" style="display: none;" onclick="handleDispensePrescription()">
+                    <i class="fas fa-pills me-2"></i>Cấp phát thuốc
+                </button>
             </div>
         </div>
     </div>
 </div>
 
 <script src="{% load static %}{% static 'js/prescriptions.js' %}?v=3"></script>
+<script>
+// Enhanced modal functionality
+const originalOpenDispenseModal = window.openDispenseModal;
+
+window.openDispenseModal = async function(id) {
+    const modal = new bootstrap.Modal(document.getElementById('dispenseModal'));
+    setDpError(''); setDpLoading(true); document.getElementById('dp-content').classList.add('d-none');
+    
+    modal.show();
+    
+    try {
+        const res = await axios.get(`/api/prescriptions/${id}/`);
+        const p = res.data;
+        
+        // Update modal title
+        const titleEl = document.getElementById('dp-title-number');
+        if (titleEl) titleEl.textContent = `#${p.prescription_number}`;
+        
+        // Patient info - enhanced with all fields
+        document.getElementById('dp-patient').textContent = p.patient?.full_name || p.patient_name || '-';
+        const patientCodeEl = document.getElementById('dp-patient-code');
+        if (patientCodeEl) patientCodeEl.textContent = `Mã BN: ${p.patient?.patient_code || '-'}`;
+        
+        document.getElementById('dp-phone').textContent = p.patient?.phone_number || p.patient_phone || '-';
+        
+        const dobEl = document.getElementById('dp-dob');
+        if (dobEl) dobEl.textContent = p.patient?.date_of_birth ? new Date(p.patient.date_of_birth).toLocaleDateString('vi-VN') : '-';
+        
+        // Additional patient info
+        const genderEl = document.getElementById('dp-gender');
+        if (genderEl) {
+            const genderMap = { 'M': 'Nam', 'F': 'Nữ', 'O': 'Khác' };
+            genderEl.textContent = genderMap[p.patient?.gender] || p.patient?.gender || '-';
+        }
+        
+        const citizenEl = document.getElementById('dp-citizen-id');
+        if (citizenEl) citizenEl.textContent = p.patient?.citizen_id || '-';
+        
+        // Full address construction
+        let fullAddress = '';
+        if (p.patient?.address) fullAddress += p.patient.address;
+        if (p.patient?.ward) fullAddress += (fullAddress ? ', ' : '') + p.patient.ward;
+        if (p.patient?.province) fullAddress += (fullAddress ? ', ' : '') + p.patient.province;
+        document.getElementById('dp-address').textContent = fullAddress || p.patient_address || '-';
+        
+        // Doctor info
+        document.getElementById('dp-doctor').textContent = p.doctor?.user?.full_name || p.doctor_name || '-';
+        
+        const specialtyEl = document.getElementById('dp-specialty');
+        if (specialtyEl) specialtyEl.textContent = `Khoa: ${p.doctor?.department || '-'}`;
+        
+        const dateEl = document.getElementById('dp-date');
+        if (dateEl) dateEl.textContent = p.prescription_date ? new Date(p.prescription_date).toLocaleDateString('vi-VN') : '-';
+        
+        const prescCodeEl = document.getElementById('dp-prescription-code');
+        if (prescCodeEl) prescCodeEl.textContent = p.prescription_number || '-';
+        
+        const diagnosisEl = document.getElementById('dp-diagnosis');
+        if (diagnosisEl) diagnosisEl.textContent = p.diagnosis || 'Không có thông tin';
+        
+        // Amounts
+        document.getElementById('dp-total').textContent = formatCurrency(p.total_amount);
+        const insuranceEl = document.getElementById('dp-insurance');
+        if (insuranceEl) insuranceEl.textContent = formatCurrency(p.insurance_covered_amount || 0);
+        const patientPayEl = document.getElementById('dp-patient-pay');
+        if (patientPayEl) patientPayEl.textContent = formatCurrency(p.patient_payment_amount || 0);
+        
+        // Items table
+        const tbody = document.getElementById('dp-items');
+        tbody.innerHTML = '';
+        
+        if (p.items && p.items.length > 0) {
+            p.items.forEach(it => {
+                const tr = document.createElement('tr');
+                
+                const frequencyMap = {
+                    '1X_DAILY': '1 lần/ngày',
+                    '2X_DAILY': '2 lần/ngày', 
+                    '3X_DAILY': '3 lần/ngày',
+                    '4X_DAILY': '4 lần/ngày',
+                    'AS_NEEDED': 'Khi cần'
+                };
+                
+                tr.innerHTML = `
+                    <td class="rx-name">
+                        <div class="fw-semibold">${it.drug?.name || it.drug_name || '-'}</div>
+                        <div class="text-muted small">${it.drug?.generic_name || it.instructions || '-'}</div>
+                    </td>
+                    <td class="text-center">${it.quantity || 0}</td>
+                    <td class="text-center">
+                        <div>${it.dosage_per_time || '-'}</div>
+                        <div class="small text-muted">${frequencyMap[it.frequency] || it.frequency || '-'}</div>
+                    </td>
+                    <td class="text-center">${formatCurrency(it.unit_price)}</td>
+                    <td class="text-center fw-bold">${formatCurrency(it.total_price)}</td>
+                    <td class="text-center">
+                        <button class="btn btn-sm btn-outline-success" title="Cấp phát">
+                            <i class="fas fa-pills"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        } else {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">Không có thuốc nào</td></tr>';
+        }
+        
+                 // Show/hide dispense button based on new workflow
+         const dispenseBtn = document.getElementById('dp-dispense-btn');
+         if (dispenseBtn) {
+             if (p.status === 'PREPARED') {
+                 dispenseBtn.style.display = 'block';
+                 dispenseBtn.innerHTML = '<i class="fas fa-pills me-2"></i>Cấp thuốc cho bệnh nhân';
+                 dispenseBtn.title = 'Chuyển trạng thái sang Đã cấp thuốc';
+                 dispenseBtn.setAttribute('data-prescription-id', p.id);
+                 dispenseBtn.setAttribute('data-prescription-number', p.prescription_number);
+             } else {
+                 dispenseBtn.style.display = 'none';
+                 dispenseBtn.removeAttribute('data-prescription-id');
+                 dispenseBtn.removeAttribute('data-prescription-number');
+             }
+         }
+        
+        setDpLoading(false);
+        document.getElementById('dp-content').classList.remove('d-none');
+        
+    } catch (e) {
+        setDpLoading(false);
+        setDpError('Không thể tải chi tiết đơn thuốc. Vui lòng thử lại.');
+        console.error('Error loading prescription:', e);
+    }
+};
+
+// Function to handle dispensing prescription
+async function handleDispensePrescription() {
+    const dispenseBtn = document.getElementById('dp-dispense-btn');
+    const prescriptionId = dispenseBtn?.getAttribute('data-prescription-id');
+    const prescriptionNumber = dispenseBtn?.getAttribute('data-prescription-number');
+    
+    if (!prescriptionId) {
+        alert('Không tìm thấy ID đơn thuốc');
+        return;
+    }
+    
+    // Confirm action
+    if (!confirm(`Bạn có chắc chắn muốn cấp thuốc cho đơn ${prescriptionNumber}?\n\nHành động này sẽ chuyển trạng thái đơn thuốc sang "Đã cấp thuốc".`)) {
+        return;
+    }
+    
+    try {
+        // Disable button and show loading
+        dispenseBtn.disabled = true;
+        dispenseBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Đang xử lý...';
+        
+        // Call API to update prescription status to DISPENSED
+        const response = await axios.patch(`/api/prescriptions/${prescriptionId}/`, {
+            status: 'DISPENSED'
+        });
+        
+        if (response.status === 200) {
+            // Success - close modal and refresh list
+            const modal = bootstrap.Modal.getInstance(document.getElementById('dispenseModal'));
+            if (modal) modal.hide();
+            
+            // Show success message
+            if (window.HospitalApp && window.HospitalApp.showAlert) {
+                HospitalApp.showAlert(`Đã cấp thuốc thành công cho đơn ${prescriptionNumber}!`, 'success');
+            } else {
+                alert(`Đã cấp thuốc thành công cho đơn ${prescriptionNumber}!`);
+            }
+            
+            // Refresh prescriptions list
+            if (typeof loadPrescriptions === 'function') {
+                loadPrescriptions();
+            }
+        }
+        
+    } catch (error) {
+        console.error('Error dispensing prescription:', error);
+        
+        // Show error message
+        const errorMessage = error.response?.data?.error || 
+                           error.response?.data?.message || 
+                           error.response?.data?.detail ||
+                           'Có lỗi xảy ra khi cấp thuốc';
+        
+        if (window.HospitalApp && window.HospitalApp.showAlert) {
+            HospitalApp.showAlert(`Lỗi: ${errorMessage}`, 'danger');
+        } else {
+            alert(`Lỗi: ${errorMessage}`);
+        }
+        
+        // Re-enable button
+        dispenseBtn.disabled = false;
+        dispenseBtn.innerHTML = '<i class="fas fa-pills me-2"></i>Cấp thuốc cho bệnh nhân';
+    }
+}
+</script>
 {% endblock %}
 
 

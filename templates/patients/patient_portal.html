@@ -202,11 +202,10 @@
                                     <th class="text-center">Khoa</th>
                                     <th class="text-center">Phòng khám</th>
                                     <th class="text-center">Trạng thái</th>
-                                    <th class="text-center">Ghi chú</th>
                                 </tr>
                             </thead>
                             <tbody id="history-tbody">
-                                <tr><td colspan="6" class="text-center">Đang tải...</td></tr>
+                                <tr><td colspan="5" class="text-center">Đang tải...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -425,6 +424,25 @@ function showAlert(message, type = 'success') {
 }
 
 // Helper function to get Vietnam time
+// Microservices Configuration
+const MICROSERVICES_CONFIG = {
+    enabled: false, // Set to false to use local APIs
+    services: {
+        prescriptions: 'http://localhost', // via nginx proxy to microservices
+        payments: 'http://localhost',      // via nginx proxy to microservices
+        patients: '/api',                  // keep local for now
+        appointments: '/api'               // keep local for now
+    }
+};
+
+// Get API URL for service
+function getServiceUrl(service) {
+    if (MICROSERVICES_CONFIG.enabled && MICROSERVICES_CONFIG.services[service]) {
+        return MICROSERVICES_CONFIG.services[service];
+    }
+    return '/api'; // fallback to local
+}
+
 function getVietnamTime() {
     const now = new Date();
     const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
@@ -454,6 +472,12 @@ async function initializePortal() {
         
 
         
+        // Set default Authorization header if token exists
+        const existingToken = localStorage.getItem('access_token');
+        if (existingToken && typeof axios !== 'undefined') {
+            axios.defaults.headers.common['Authorization'] = `Bearer ${existingToken}`;
+        }
+
         // Load initial data
         await loadDepartments();
         await loadProvinces();
@@ -464,28 +488,77 @@ async function initializePortal() {
 }
 
 // Initialize when ready
+function waitForAxios() {
+    if (typeof axios !== 'undefined') {
+        initializePortal();
+    } else {
+        setTimeout(waitForAxios, 100);
+    }
+}
+
+// Check if we're ready or wait
 if (window.HospitalApp && window.HospitalApp.onAxiosReady) {
     HospitalApp.onAxiosReady(initializePortal);
-} else {
-    // Initialize directly if HospitalApp is not available
+} else if (typeof axios !== 'undefined') {
+    // Axios is ready, initialize directly
     initializePortal();
+} else {
+    // Wait for axios to load
+    waitForAxios();
 }
 
 // Load departments
 async function loadDepartments() {
     try {
-        const response = await axios.get('/api/departments/');
+        // Try appointments API first (it might have departments)
+        let response;
+        try {
+            response = await axios.get('/api/departments/');
+        } catch (error) {
+            // Fallback: create static departments for now
+            console.warn('Departments API not found, using static data:', error);
+            const departments = [
+                { id: 1, name: 'Khoa Nội' },
+                { id: 2, name: 'Khoa Ngoại' },
+                { id: 3, name: 'Khoa Sản' },
+                { id: 4, name: 'Khoa Nhi' },
+                { id: 5, name: 'Khoa Mắt' },
+                { id: 6, name: 'Khoa Răng Hàm Mặt' },
+                { id: 7, name: 'Khoa Tim Mạch' },
+                { id: 8, name: 'Khoa Thần Kinh' }
+            ];
+            
+            const select = document.getElementById('dept-select');
+            if (select) {
+                select.innerHTML = '<option value="">Chọn khoa khám</option>';
+                departments.forEach(dept => {
+                    const option = document.createElement('option');
+                    option.value = dept.id;
+                    option.textContent = dept.name;
+                    select.appendChild(option);
+                });
+            }
+            return;
+        }
+        
         const departments = response.data.results || response.data;
         const select = document.getElementById('dept-select');
-        select.innerHTML = '<option value="">Chọn khoa khám</option>';
-        departments.forEach(dept => {
-            const option = document.createElement('option');
-            option.value = dept.id;
-            option.textContent = dept.name;
-            select.appendChild(option);
-        });
+        if (select) {
+            select.innerHTML = '<option value="">Chọn khoa khám</option>';
+            departments.forEach(dept => {
+                const option = document.createElement('option');
+                option.value = dept.id;
+                option.textContent = dept.name;
+                select.appendChild(option);
+            });
+        }
     } catch (error) {
         console.error('Error loading departments:', error);
+        // Ensure select has at least default option
+        const select = document.getElementById('dept-select');
+        if (select && select.children.length === 0) {
+            select.innerHTML = '<option value="">Chọn khoa khám</option>';
+        }
     }
 }
 
@@ -816,7 +889,7 @@ async function loadMyAppointments() {
         const appointments = response.data.results || response.data;
         
         if (appointments.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Chưa có lịch hẹn nào</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Chưa có lịch hẹn nào</td></tr>';
             return;
         }
         
@@ -846,12 +919,11 @@ async function loadMyAppointments() {
                 <td class="text-center">${departmentName}</td>
                 <td class="text-center">${roomLocation}</td>
                 <td class="text-center">${statusBadge[appt.status] || appt.status}</td>
-                <td class="text-center">${appt.chief_complaint || '-'}</td>
             `;
             tbody.appendChild(row);
         });
     } catch (error) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-danger text-center">Lỗi tải lịch sử</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="text-danger text-center">Lỗi tải lịch sử</td></tr>';
     }
 }
 
@@ -880,7 +952,8 @@ async function loadMyPayments() {
         const patient = patients[0];
 
         // Load prescriptions for this specific patient using patient ID filter
-        const prescriptionsResponse = await axios.get(`/api/prescriptions/?patient=${patient.id}`);
+        const prescriptionsUrl = `/api/prescriptions/?patient=${patient.id}`;
+        const prescriptionsResponse = await axios.get(prescriptionsUrl);
         const allPrescriptions = prescriptionsResponse.data.results || prescriptionsResponse.data;
 
         // Remove duplicates by prescription_number
@@ -889,7 +962,8 @@ async function loadMyPayments() {
         );
 
         // Load all payments and filter by patient's prescriptions
-        const allPaymentsResponse = await axios.get('/api/payments/');
+        const paymentsUrl = `/api/payments/`;
+        const allPaymentsResponse = await axios.get(paymentsUrl);
         const allPayments = allPaymentsResponse.data.results || allPaymentsResponse.data;
 
         // Filter payments that belong to this patient's prescriptions
@@ -903,6 +977,14 @@ async function loadMyPayments() {
         // Clear loading and build the table
         tbody.innerHTML = '';
 
+        // Helper to check if a prescription is eligible for payment
+        const isPrescriptionEligible = (p) => {
+            if (!p) return false;
+            const status = (p.status || '').toUpperCase();
+            const amount = Number(p.patient_payment_amount || p.total_amount || 0);
+            return status === 'ACTIVE' && amount > 0;
+        };
+
         // Display existing payments (remove duplicates)
         const uniquePayments = payments.filter((payment, index, self) =>
             index === self.findIndex(p => p.prescription_number === payment.prescription_number)
@@ -912,13 +994,25 @@ async function loadMyPayments() {
 
         uniquePayments.forEach(payment => {
             const prescription = prescriptions.find(p => p.prescription_number === payment.prescription_number);
+            const eligible = isPrescriptionEligible(prescription);
             const row = document.createElement('tr');
+            const isPaid = payment.status?.toLowerCase() === 'paid';
             row.innerHTML = `
                 <td class="text-center">${formatDate(prescription?.prescription_date || payment.created_at)}</td>
-                <td>Đơn thuốc - ${payment.prescription_number}</td>
-                <td class="text-center">${(payment.amount || prescription?.total_amount || 0).toLocaleString()} VNĐ</td>
-                <td class="text-center"><span class="badge ${getPaymentStatusBadge(payment.status)}">${getPaymentStatusText(payment.status)}</span></td>
-                <td class="text-center">${getPaymentAction(payment)}</td>
+                <td>
+                    <div>Đơn thuốc - ${payment.prescription_number}</div>
+                    <div class="small text-muted">${prescription?.diagnosis || ''}</div>
+                </td>
+                <td class="text-center">${(payment.amount || prescription?.patient_payment_amount || prescription?.total_amount || 0).toLocaleString()} VNĐ</td>
+                <td class="text-center"><span class="badge ${getPaymentStatusBadge(isPaid ? 'paid' : (eligible ? payment.status : 'not_allowed'))}">${isPaid ? 'Đã thanh toán' : (eligible ? getPaymentStatusText(payment.status) : 'Không khả dụng')}</span></td>
+                <td class="text-center">
+                    <div class="btn-group-vertical btn-group-sm">
+                        <button class="btn btn-outline-info btn-sm" onclick="viewPrescriptionDetail('${payment.prescription_id || payment.prescription}')">
+                            <i class="fas fa-eye"></i> Chi tiết
+                        </button>
+                        ${isPaid ? '<span class="text-success small"><i class="fas fa-check"></i> Đã thanh toán</span>' : (eligible ? getPaymentAction(payment) : '<span class="text-muted small">Không khả dụng</span>')}
+                    </div>
+                </td>
             `;
             tbody.appendChild(row);
         });
@@ -926,7 +1020,8 @@ async function loadMyPayments() {
         // Display prescriptions without payments (unpaid) - remove duplicates
         const paidPrescriptionNumbers = uniquePayments.map(p => p.prescription_number);
         const unpaidPrescriptions = prescriptions
-            .filter(p => !paidPrescriptionNumbers.includes(p.prescription_number) && p.total_amount > 0)
+            .filter(p => !paidPrescriptionNumbers.includes(p.prescription_number))
+            .filter(p => ((p.status || '').toUpperCase() === 'ACTIVE') && (Number(p.patient_payment_amount || p.total_amount || 0) > 0))
             .filter((prescription, index, self) =>
                 index === self.findIndex(p => p.prescription_number === prescription.prescription_number)
             );
@@ -937,10 +1032,22 @@ async function loadMyPayments() {
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td class="text-center">${formatDate(prescription.prescription_date)}</td>
-                <td>Đơn thuốc - ${prescription.prescription_number}</td>
-                <td class="text-center">${(prescription.total_amount || 0).toLocaleString()} VNĐ</td>
+                <td>
+                    <div>Đơn thuốc - ${prescription.prescription_number}</div>
+                    <div class="small text-muted">${prescription.diagnosis || ''}</div>
+                </td>
+                <td class="text-center">${(prescription.patient_payment_amount || prescription.total_amount || 0).toLocaleString()} VNĐ</td>
                 <td class="text-center"><span class="badge bg-warning">Chưa thanh toán</span></td>
-                <td class="text-center"><button class="btn btn-sm btn-primary d-block mx-auto" onclick="createPaymentAndPay('${prescription.id}', '${prescription.prescription_number}')">Thanh toán</button></td>
+                <td class="text-center">
+                    <div class="btn-group-vertical btn-group-sm">
+                        <button class="btn btn-outline-info btn-sm" onclick="viewPrescriptionDetail('${prescription.id}')">
+                            <i class="fas fa-eye"></i> Chi tiết
+                        </button>
+                        <button class="btn btn-primary btn-sm" onclick="createPaymentAndPay('${prescription.id}', '${prescription.prescription_number}')">
+                            <i class="fas fa-credit-card"></i> Thanh toán
+                        </button>
+                    </div>
+                </td>
             `;
             tbody.appendChild(row);
         });
@@ -1018,21 +1125,152 @@ function formatDate(dateString) {
     }
 }
 
+// Function để hiển thị chi tiết đơn thuốc
+async function viewPrescriptionDetail(prescriptionId) {
+    const modal = new bootstrap.Modal(document.getElementById('prescriptionDetailModal'));
+    const loadingEl = document.getElementById('prescription-loading');
+    const errorEl = document.getElementById('prescription-error');
+    const contentEl = document.getElementById('prescription-content');
+    
+    // Reset state
+    loadingEl.style.display = 'block';
+    errorEl.classList.add('d-none');
+    contentEl.classList.add('d-none');
+    
+    modal.show();
+    
+    try {
+        // Load prescription detail
+        const response = await axios.get(`/api/prescriptions/${prescriptionId}/`);
+        const prescription = response.data;
+        
+        // Update modal title
+        document.getElementById('prescription-number-display').textContent = prescription.prescription_number;
+        
+        // Update patient info
+        document.getElementById('patient-name').textContent = prescription.patient?.full_name || 'N/A';
+        document.getElementById('patient-code').textContent = prescription.patient?.patient_code || 'N/A';
+        document.getElementById('patient-phone').textContent = prescription.patient?.phone_number || 'N/A';
+        document.getElementById('patient-dob').textContent = formatDate(prescription.patient?.date_of_birth) || 'N/A';
+        
+        // Update doctor info
+        document.getElementById('doctor-name').textContent = prescription.doctor?.user?.full_name || 'N/A';
+        document.getElementById('doctor-specialty').textContent = prescription.doctor?.department || 'N/A';
+        document.getElementById('prescription-date').textContent = formatDate(prescription.prescription_date);
+        
+        // Update status
+        const statusEl = document.getElementById('prescription-status');
+        const statusInfo = getPrescriptionStatusInfo(prescription.status);
+        statusEl.textContent = statusInfo.text;
+        statusEl.className = `badge ${statusInfo.class}`;
+        
+        // Update diagnosis and notes
+        document.getElementById('prescription-diagnosis').textContent = prescription.diagnosis || 'Không có thông tin';
+        document.getElementById('prescription-notes').textContent = prescription.notes || 'Không có ghi chú';
+        
+        // Update prescription items
+        const itemsContainer = document.getElementById('prescription-items');
+        itemsContainer.innerHTML = '';
+        
+        if (prescription.items && prescription.items.length > 0) {
+            prescription.items.forEach(item => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>
+                        <div class="fw-bold">${item.drug?.name || 'N/A'}</div>
+                        <div class="small text-muted">${item.drug?.generic_name || ''}</div>
+                    </td>
+                    <td class="text-center">${item.quantity || 0}</td>
+                    <td class="text-center">${item.dosage_per_time || 'N/A'}</td>
+                    <td class="text-center">${getFrequencyText(item.frequency) || 'N/A'}</td>
+                    <td class="text-center">${(item.unit_price || 0).toLocaleString()} VNĐ</td>
+                    <td class="text-center fw-bold">${(item.total_price || 0).toLocaleString()} VNĐ</td>
+                `;
+                itemsContainer.appendChild(row);
+            });
+        } else {
+            itemsContainer.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Không có thuốc nào</td></tr>';
+        }
+        
+        // Update amounts
+        document.getElementById('total-amount').textContent = (prescription.total_amount || 0).toLocaleString() + ' VNĐ';
+        document.getElementById('insurance-amount').textContent = (prescription.insurance_covered_amount || 0).toLocaleString() + ' VNĐ';
+        document.getElementById('patient-amount').textContent = (prescription.patient_payment_amount || 0).toLocaleString() + ' VNĐ';
+        
+        // Show/hide payment button
+        const paymentBtn = document.getElementById('prescription-payment-btn');
+        if (prescription.status === 'ACTIVE' && prescription.patient_payment_amount > 0) {
+            paymentBtn.style.display = 'block';
+            paymentBtn.onclick = () => {
+                modal.hide();
+                createPaymentAndPay(prescription.id, prescription.prescription_number);
+            };
+        } else {
+            paymentBtn.style.display = 'none';
+        }
+        
+        // Hide loading, show content
+        loadingEl.style.display = 'none';
+        contentEl.classList.remove('d-none');
+        
+    } catch (error) {
+        console.error('Error loading prescription detail:', error);
+        
+        // Show error
+        loadingEl.style.display = 'none';
+        const errorMessageEl = document.getElementById('prescription-error-message');
+        errorMessageEl.textContent = 'Không thể tải thông tin đơn thuốc. Vui lòng thử lại.';
+        errorEl.classList.remove('d-none');
+    }
+}
+
+// Helper function để lấy thông tin trạng thái đơn thuốc
+function getPrescriptionStatusInfo(status) {
+    switch (status?.toUpperCase()) {
+        case 'DRAFT':
+            return { text: 'Nháp', class: 'bg-secondary' };
+        case 'ACTIVE':
+            return { text: 'Đang hiệu lực', class: 'bg-success' };
+        case 'DISPENSED':
+            return { text: 'Đã cấp phát', class: 'bg-primary' };
+        case 'PARTIALLY_DISPENSED':
+            return { text: 'Cấp phát một phần', class: 'bg-warning' };
+        case 'CANCELLED':
+            return { text: 'Đã hủy', class: 'bg-danger' };
+        case 'EXPIRED':
+            return { text: 'Đã hết hạn', class: 'bg-dark' };
+        default:
+            return { text: status || 'N/A', class: 'bg-light text-dark' };
+    }
+}
+
+// Helper function để chuyển đổi frequency sang text
+function getFrequencyText(frequency) {
+    switch (frequency) {
+        case '1X_DAILY': return '1 lần/ngày';
+        case '2X_DAILY': return '2 lần/ngày';
+        case '3X_DAILY': return '3 lần/ngày';
+        case '4X_DAILY': return '4 lần/ngày';
+        case 'AS_NEEDED': return 'Khi cần';
+        case 'WEEKLY': return 'Hàng tuần';
+        case 'MONTHLY': return 'Hàng tháng';
+        default: return frequency || 'N/A';
+    }
+}
+
 // Payment functions
 async function createPaymentAndPay(prescriptionId, prescriptionNumber) {
     try {
-        // First, create or get payment record
-        const paymentResponse = await axios.post('/api/payments/', {
+        // First, create payment record (server calculates amount)
+        const paymentResponse = await axios.post(`/api/payments/`, {
             prescription: prescriptionId,
-            prescription_number: prescriptionNumber,
-            amount: 0, // Will be calculated from prescription
-            status: 'PENDING'
+            method: 'VNPAY'
         });
 
         const payment = paymentResponse.data;
 
-        // Proceed with VNPay payment
-        await payWithVNPay(payment.id);
+        // Proceed with VNPay payment (use prescription id per API contract)
+        await payWithVNPay(prescriptionId);
 
     } catch (error) {
         console.error('Error creating payment:', error);
@@ -1041,10 +1279,12 @@ async function createPaymentAndPay(prescriptionId, prescriptionNumber) {
     }
 }
 
-async function payWithVNPay(paymentId) {
+async function payWithVNPay(prescriptionId) {
     try {
-        const response = await axios.post('/api/payments/vnpay_create/', {
-            payment_id: paymentId
+        // VNPay API expects prescription and order_desc; amount is calculated server-side
+        const response = await axios.post(`/api/payments/vnpay_create/`, {
+            prescription: prescriptionId,
+            order_desc: 'Thanh toán đơn thuốc qua VNPay'
         });
 
         const vnpayData = response.data;
@@ -1115,20 +1355,28 @@ document.getElementById('pp-province').addEventListener('change', async function
 // Load profile data
 async function loadMyProfile() {
     try {
-        // Load user data
-        const userRes = await axios.get('/api/auth/profile/');
-        const userData = userRes.data;
+        // Load user data with fallback to localStorage
+        let userData = getCurrentUser();
+        try {
+            const userRes = await axios.get('/api/auth/profile/');
+            userData = userRes.data || userData;
+        } catch (err) {
+            // Fallback silently to local user data
+        }
         document.getElementById('pp-fullname').value = userData.full_name || '';
         document.getElementById('pp-phone').value = userData.phone_number || '';
         document.getElementById('pp-email').value = userData.email || '';
-        
+
         // Load patient data
-        const user = getCurrentUser();
+        const user = userData || getCurrentUser();
         const patients = await axios.get('/api/patients/?search=' + encodeURIComponent(user.phone_number || user.username || ''));
         const list = patients.data.results || patients.data;
         
         if (list && list.length) {
-            const patient = list[0];
+            const id = list[0].id;
+            // Fetch full patient detail to get CCCD, địa chỉ, v.v.
+            const detailRes = await axios.get(`/api/patients/${id}/`);
+            const patient = detailRes.data;
             document.getElementById('pp-dob').value = patient.date_of_birth || '';
             document.getElementById('pp-gender').value = patient.gender || '';
             document.getElementById('pp-citizen').value = patient.citizen_id || '';
@@ -1136,6 +1384,16 @@ async function loadMyProfile() {
             document.getElementById('pp-blood').value = patient.blood_type || '';
             document.getElementById('pp-allergies').value = patient.allergies || '';
             document.getElementById('pp-chronic').value = patient.chronic_diseases || '';
+            // Đồng bộ lại phone/email nếu thiếu trên userData
+            if (!document.getElementById('pp-phone').value) {
+                document.getElementById('pp-phone').value = patient.phone_number || '';
+            }
+            if (!document.getElementById('pp-email').value) {
+                document.getElementById('pp-email').value = patient.email || '';
+            }
+            // Take baseline snapshot to detect changes and disable save initially
+            window.__PROFILE_BASELINE__ = getProfileFormData();
+            updateSaveButtonState();
             
             // Set province and ward selections
             if (patient.province) {
@@ -1152,8 +1410,58 @@ async function loadMyProfile() {
         }
     } catch (error) {
         console.error('Error loading profile:', error);
+        // Try to at least populate from local storage if available
+        const user = getCurrentUser();
+        if (user && (user.full_name || user.username)) {
+            document.getElementById('pp-fullname').value = user.full_name || user.username || '';
+            document.getElementById('pp-phone').value = user.phone_number || '';
+            document.getElementById('pp-email').value = user.email || '';
+        }
     }
 }
+
+function getProfileFormData() {
+    return {
+        full_name: document.getElementById('pp-fullname').value.trim(),
+        phone_number: document.getElementById('pp-phone').value.trim(),
+        email: document.getElementById('pp-email').value.trim(),
+        date_of_birth: document.getElementById('pp-dob').value,
+        gender: document.getElementById('pp-gender').value,
+        citizen_id: document.getElementById('pp-citizen').value.trim(),
+        province_text: (document.getElementById('pp-province')?.selectedOptions[0]?.text || '').trim(),
+        ward_text: (document.getElementById('pp-ward')?.selectedOptions[0]?.text || '').trim(),
+        address: document.getElementById('pp-address').value.trim(),
+        blood_type: document.getElementById('pp-blood').value,
+        allergies: document.getElementById('pp-allergies').value.trim(),
+        chronic_diseases: document.getElementById('pp-chronic').value.trim()
+    };
+}
+
+function hasProfileChanged() {
+    const baseline = window.__PROFILE_BASELINE__ || {};
+    const current = getProfileFormData();
+    const keys = Object.keys(current);
+    for (const k of keys) {
+        if ((baseline[k] || '') !== (current[k] || '')) return true;
+    }
+    return false;
+}
+
+function updateSaveButtonState() {
+    const btn = document.getElementById('pp-save-profile');
+    if (!btn) return;
+    btn.disabled = !hasProfileChanged();
+}
+
+// Bind change listeners to form fields to toggle save button
+['pp-fullname','pp-phone','pp-email','pp-dob','pp-gender','pp-citizen','pp-province','pp-ward','pp-address','pp-blood','pp-allergies','pp-chronic']
+    .forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            const ev = (el.tagName === 'SELECT' || el.type === 'date') ? 'change' : 'input';
+            el.addEventListener(ev, updateSaveButtonState);
+        }
+    });
 
 // Load wards for a specific province and select one
 async function loadWardsForProvince(provinceCode, selectedWard) {
@@ -1205,9 +1513,13 @@ document.getElementById('pp-save-profile').addEventListener('click', async funct
             const id = list[0].id;
             await axios.patch(`/api/patients/${id}/`, payload);
             showAlert('Cập nhật hồ sơ thành công', 'success');
+            window.__PROFILE_BASELINE__ = getProfileFormData();
+            updateSaveButtonState();
         } else {
             await axios.post('/api/patients/', payload);
             showAlert('Tạo hồ sơ bệnh nhân thành công', 'success');
+            window.__PROFILE_BASELINE__ = getProfileFormData();
+            updateSaveButtonState();
         }
     } catch (error) {
         // Error already handled by interceptor
@@ -1234,4 +1546,171 @@ if (typeof HospitalApp !== 'undefined' && HospitalApp.onAxiosReady) {
     safeInitialize();
 }
 </script>
+
+<!-- Modal chi tiết đơn thuốc -->
+<div class="modal fade" id="prescriptionDetailModal" tabindex="-1" aria-labelledby="prescriptionDetailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="prescriptionDetailModalLabel">
+                    <i class="fas fa-prescription-bottle me-2"></i>Chi tiết đơn thuốc
+                    <span class="text-muted" id="prescription-number-display"></span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Loading -->
+                <div id="prescription-loading" class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Đang tải...</span>
+                    </div>
+                    <p class="mt-2 text-muted">Đang tải thông tin đơn thuốc...</p>
+                </div>
+                
+                <!-- Error -->
+                <div id="prescription-error" class="alert alert-danger d-none">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <span id="prescription-error-message">Có lỗi xảy ra khi tải thông tin đơn thuốc</span>
+                </div>
+                
+                <!-- Content -->
+                <div id="prescription-content" class="d-none">
+                    <!-- Thông tin chung -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <div class="card h-100">
+                                <div class="card-header bg-primary text-white py-2">
+                                    <h6 class="mb-0"><i class="fas fa-user me-2"></i>Thông tin bệnh nhân</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row g-2">
+                                        <div class="col-12">
+                                            <div class="fw-bold text-primary" id="patient-name">-</div>
+                                            <div class="text-muted small" id="patient-code">-</div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="small text-muted">Điện thoại</div>
+                                            <div id="patient-phone">-</div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="small text-muted">Ngày sinh</div>
+                                            <div id="patient-dob">-</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card h-100">
+                                <div class="card-header bg-success text-white py-2">
+                                    <h6 class="mb-0"><i class="fas fa-user-md me-2"></i>Thông tin bác sĩ</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row g-2">
+                                        <div class="col-12">
+                                            <div class="fw-bold text-success" id="doctor-name">-</div>
+                                            <div class="text-muted small" id="doctor-specialty">-</div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="small text-muted">Ngày kê đơn</div>
+                                            <div id="prescription-date">-</div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="small text-muted">Trạng thái</div>
+                                            <div>
+                                                <span class="badge" id="prescription-status">-</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Chẩn đoán và ghi chú -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-info text-white py-2">
+                            <h6 class="mb-0"><i class="fas fa-stethoscope me-2"></i>Chẩn đoán & Ghi chú</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="small text-muted mb-1">Chẩn đoán</div>
+                                    <div class="p-2 bg-light rounded" id="prescription-diagnosis">-</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="small text-muted mb-1">Ghi chú của bác sĩ</div>
+                                    <div class="p-2 bg-light rounded" id="prescription-notes">-</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Danh sách thuốc -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-warning text-dark py-2">
+                            <h6 class="mb-0"><i class="fas fa-pills me-2"></i>Danh sách thuốc</h6>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th style="width: 35%">Tên thuốc</th>
+                                            <th class="text-center" style="width: 10%">Số lượng</th>
+                                            <th class="text-center" style="width: 15%">Liều dùng</th>
+                                            <th class="text-center" style="width: 15%">Tần suất</th>
+                                            <th class="text-center" style="width: 10%">Đơn giá</th>
+                                            <th class="text-center" style="width: 15%">Thành tiền</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="prescription-items">
+                                        <!-- Sẽ được load bằng JavaScript -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Tổng tiền -->
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <div class="card bg-light">
+                                <div class="card-body text-center py-3">
+                                    <div class="small text-muted mb-1">Tổng tiền thuốc</div>
+                                    <div class="h5 mb-0 text-primary fw-bold" id="total-amount">0 VNĐ</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-light">
+                                <div class="card-body text-center py-3">
+                                    <div class="small text-muted mb-1">BHYT chi trả</div>
+                                    <div class="h5 mb-0 text-success fw-bold" id="insurance-amount">0 VNĐ</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-light">
+                                <div class="card-body text-center py-3">
+                                    <div class="small text-muted mb-1">Bệnh nhân trả</div>
+                                    <div class="h5 mb-0 text-danger fw-bold" id="patient-amount">0 VNĐ</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Đóng
+                </button>
+                <button type="button" class="btn btn-primary" id="prescription-payment-btn" style="display: none;">
+                    <i class="fas fa-credit-card me-2"></i>Thanh toán
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}

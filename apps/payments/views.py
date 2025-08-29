@@ -64,10 +64,23 @@ class PaymentViewSet(ModelViewSet):
         order_desc = serializer.validated_data['order_desc']
         amount = serializer.validated_data['amount']
         
+        # Check if there's already a payment for this prescription
+        existing_paid = Payment.objects.filter(
+            prescription=prescription,
+            status='PAID'
+        ).exists()
+        
+        if existing_paid:
+            return Response(
+                {'error': 'Đơn thuốc đã được thanh toán'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
         # Check if there's already a pending payment for this prescription
         existing_payment = Payment.objects.filter(
             prescription=prescription,
-            status='PENDING'
+            status='PENDING',
+            method='VNPAY'
         ).first()
         
         if existing_payment:
@@ -84,7 +97,8 @@ class PaymentViewSet(ModelViewSet):
         
         # Generate VNPAY payment URL
         vnpay_service = VNPayService()
-        payment_url, vnp_TxnRef = vnpay_service.create_payment_url(payment, order_desc)
+        client_ip = request.META.get('HTTP_X_FORWARDED_FOR') or request.META.get('REMOTE_ADDR', '127.0.0.1')
+        payment_url, vnp_TxnRef = vnpay_service.create_payment_url(payment, order_desc, client_ip=client_ip)
         
         # Update payment with VNPAY reference
         payment.vnp_TxnRef = vnp_TxnRef
@@ -126,17 +140,41 @@ class PaymentViewSet(ModelViewSet):
         order_desc = serializer.validated_data['order_desc']
         amount = serializer.validated_data['amount']
         
-        # Create payment record
-        payment = Payment.objects.create(
+        # Check if there's already a payment for this prescription
+        existing_paid = Payment.objects.filter(
             prescription=prescription,
-            method='VNPAY',
-            amount=amount,
-            created_by=request.user
-        )
+            status='PAID'
+        ).exists()
+        
+        if existing_paid:
+            return Response(
+                {'error': 'Đơn thuốc đã được thanh toán'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Check if there's already a pending QR payment for this prescription
+        existing_payment = Payment.objects.filter(
+            prescription=prescription,
+            status='PENDING',
+            method='VNPAY'
+        ).first()
+        
+        if existing_payment:
+            # Use existing payment instead of creating new one
+            payment = existing_payment
+        else:
+            # Create new payment record
+            payment = Payment.objects.create(
+                prescription=prescription,
+                method='VNPAY',
+                amount=amount,
+                created_by=request.user
+            )
         
         # Generate VNPAY QR Code
         vnpay_service = VNPayService()
-        qr_url, vnp_TxnRef = vnpay_service.create_qr_code(payment, order_desc)
+        client_ip = request.META.get('HTTP_X_FORWARDED_FOR') or request.META.get('REMOTE_ADDR', '127.0.0.1')
+        qr_url, vnp_TxnRef = vnpay_service.create_qr_code(payment, order_desc, client_ip=client_ip)
         
         # Update payment with VNPAY reference and QR code
         payment.vnp_TxnRef = vnp_TxnRef
@@ -206,6 +244,52 @@ class PaymentViewSet(ModelViewSet):
         payment.status = 'CANCELLED'
         payment.save()
         return Response(PaymentSerializer(payment).data)
+    
+    @extend_schema(
+        operation_id='payment_by_prescription',
+        summary='Lấy thanh toán theo đơn thuốc',
+        description='Lấy tất cả thanh toán cho một đơn thuốc cụ thể (dành cho portal)',
+        responses={200: PaymentSerializer}
+    )
+    @action(detail=False, methods=['get'])
+    def by_prescription(self, request):
+        """Lấy thanh toán theo đơn thuốc"""
+        prescription_id = request.query_params.get('prescription_id')
+        if not prescription_id:
+            return Response(
+                {'error': 'prescription_id là bắt buộc'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        payments = self.get_queryset().filter(prescription_id=prescription_id)
+        serializer = self.get_serializer(payments, many=True)
+        return Response(serializer.data)
+    
+    @extend_schema(
+        operation_id='payment_check_status',
+        summary='Kiểm tra trạng thái thanh toán VNPAY',
+        description='Kiểm tra trạng thái thanh toán VNPAY theo vnp_TxnRef',
+        responses={200: PaymentSerializer}
+    )
+    @action(detail=False, methods=['get'])
+    def check_vnpay_status(self, request):
+        """Kiểm tra trạng thái thanh toán VNPAY"""
+        vnp_txn_ref = request.query_params.get('vnp_TxnRef')
+        if not vnp_txn_ref:
+            return Response(
+                {'error': 'vnp_TxnRef là bắt buộc'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            payment = Payment.objects.get(vnp_TxnRef=vnp_txn_ref, method='VNPAY')
+            serializer = self.get_serializer(payment)
+            return Response(serializer.data)
+        except Payment.DoesNotExist:
+            return Response(
+                {'error': 'Không tìm thấy giao dịch VNPAY'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
 
 
 @extend_schema(tags=['vnpay'])
