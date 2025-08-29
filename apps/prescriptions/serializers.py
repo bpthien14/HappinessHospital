@@ -11,6 +11,22 @@ from .models import (
 
 User = get_user_model()
 
+# Simple serializers for nested data
+class SimplePatientSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    full_name = serializers.CharField()
+    citizen_id = serializers.CharField()
+    phone_number = serializers.CharField()
+    date_of_birth = serializers.DateField()
+    address = serializers.CharField()
+    patient_code = serializers.CharField()
+
+class SimpleDoctorSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    full_name = serializers.CharField(source='user.full_name')
+    specialization = serializers.CharField()
+    license_number = serializers.CharField()
+
 class DrugCategorySerializer(serializers.ModelSerializer):
     parent_name = serializers.CharField(source='parent.name', read_only=True)
     subcategories_count = serializers.SerializerMethodField()
@@ -71,8 +87,12 @@ class PrescriptionItemSerializer(serializers.ModelSerializer):
     drug_name = serializers.CharField(source='drug.name', read_only=True)
     drug_code = serializers.CharField(source='drug.code', read_only=True)
     drug_unit = serializers.CharField(source='drug.get_unit_display', read_only=True)
+    drug_generic_name = serializers.CharField(source='drug.generic_name', read_only=True)
     frequency_display = serializers.CharField(source='get_frequency_display', read_only=True)
     route_display = serializers.CharField(source='get_route_display', read_only=True)
+    
+    # For backward compatibility and detailed view
+    drug = DrugSerializer(read_only=True)
     
     # Computed fields
     quantity_remaining = serializers.ReadOnlyField()
@@ -82,7 +102,7 @@ class PrescriptionItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = PrescriptionItem
         fields = [
-            'id', 'prescription', 'drug', 'drug_name', 'drug_code', 'drug_unit',
+            'id', 'prescription', 'drug', 'drug_name', 'drug_code', 'drug_unit', 'drug_generic_name',
             'quantity', 'dosage_per_time', 'frequency', 'frequency_display',
             'route', 'route_display', 'duration_days', 'instructions', 'special_notes',
             'unit_price', 'total_price', 'quantity_dispensed', 'quantity_remaining',
@@ -96,6 +116,7 @@ class PrescriptionItemSerializer(serializers.ModelSerializer):
         ]
 
 class PrescriptionSerializer(serializers.ModelSerializer):
+    # Flat fields for compatibility
     patient_name = serializers.CharField(source='patient.full_name', read_only=True)
     patient_code = serializers.CharField(source='patient.patient_code', read_only=True)
     patient_phone = serializers.CharField(source='patient.phone_number', read_only=True)
@@ -104,6 +125,10 @@ class PrescriptionSerializer(serializers.ModelSerializer):
     doctor_specialization = serializers.CharField(source='doctor.specialization', read_only=True)
     
     created_by_name = serializers.CharField(source='created_by.full_name', read_only=True)
+    
+    # Nested objects for detailed view
+    patient = SimplePatientSerializer(read_only=True)
+    doctor = SimpleDoctorSerializer(read_only=True)
     
     # Status and validity
     is_valid = serializers.ReadOnlyField()
@@ -118,8 +143,12 @@ class PrescriptionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Prescription
         fields = [
-            'id', 'prescription_number', 'patient', 'patient_name', 'patient_code', 'patient_phone',
-            'doctor', 'doctor_name', 'doctor_specialization', 'appointment',
+            'id', 'prescription_number', 
+            # Flat fields
+            'patient_name', 'patient_code', 'patient_phone',
+            'doctor_name', 'doctor_specialization', 
+            # Nested objects
+            'patient', 'doctor', 'appointment',
             'prescription_date', 'prescription_type', 'prescription_type_display',
             'status', 'status_display', 'diagnosis', 'notes', 'special_instructions',
             'valid_from', 'valid_until', 'is_valid', 'days_until_expiry',
@@ -148,11 +177,16 @@ class PrescriptionCreateSerializer(serializers.ModelSerializer):
         ]
     
     def validate_items(self, items):
+        print(f"🔍 validate_items called with: {items}")
+        print(f"🔍 Items type: {type(items)}")
+        
         if not items:
             raise serializers.ValidationError("Đơn thuốc phải có ít nhất 1 loại thuốc")
         
         # Validate each item
-        for item_data in items:
+        for i, item_data in enumerate(items):
+            print(f"🔍 Item {i}: {item_data} (type: {type(item_data)})")
+            
             drug_id = item_data.get('drug')
             if drug_id and hasattr(drug_id, 'pk'):
                 drug = drug_id

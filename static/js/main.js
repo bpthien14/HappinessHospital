@@ -362,6 +362,8 @@ function applyRoleBasedRestrictions() {
     enforceReceptionRouteGuard();
     filterNavbarForPharmacist();
     enforcePharmacistRouteGuard();
+    filterNavbarForDoctor();
+    enforceDoctorRouteGuard();
 }
 
 // Early enforcement before auth init: use cached user_data if any
@@ -419,5 +421,70 @@ function filterNavbarForPharmacist() {
             const navItem = a.closest('.nav-item');
             if (navItem) navItem.style.display = keep ? '' : 'none';
         });
+    } catch (e) { /* noop */ }
+}
+
+// ===== Role-based restrictions (Doctor) =====
+function isDoctorUser() {
+    try {
+        if (!currentUser) return false;
+        if (currentUser.user_type === 'DOCTOR') return true;
+        const roles = Array.isArray(currentUser.roles) ? currentUser.roles : [];
+        return roles.includes('Doctor') || roles.includes('DOCTOR');
+    } catch (e) { return false; }
+}
+
+function isAllowedDoctorPath(pathname) {
+    try {
+        const path = (pathname.endsWith('/') ? pathname : pathname + '/').toLowerCase();
+        return path.startsWith('/doctor/') || 
+               path.startsWith('/patients/') || 
+               path.startsWith('/appointments/') ||
+               path.startsWith('/prescriptions/');
+    } catch (e) { return false; }
+}
+
+function enforceDoctorRouteGuard() {
+    try {
+        if (!isAuthenticated || !isDoctorUser()) return;
+        const url = new URL(window.location.href);
+        if (!isAllowedDoctorPath(url.pathname)) {
+            window.location.replace('/doctor/prescriptions/');
+        }
+    } catch (e) { /* noop */ }
+}
+
+function filterNavbarForDoctor() {
+    try {
+        if (!isDoctorUser()) return;
+        const nav = document.getElementById('navbarNav');
+        if (!nav) return;
+        const mainMenu = nav.querySelector('ul.navbar-nav.me-auto');
+        if (!mainMenu) return;
+        const links = mainMenu.querySelectorAll('a.nav-link');
+        links.forEach(a => {
+            const href = (a.getAttribute('href') || '').toLowerCase();
+            const isDashboard = href.includes('/dashboard');
+            const isPatients = href.startsWith('/patients/');
+            const isAppointments = href.startsWith('/appointments/');
+            const isPrescriptionsLink = a.id === 'prescriptions-link';
+            // Doctor should NOT have access to dashboard
+            const keep = !isDashboard && (isPatients || isAppointments || isPrescriptionsLink);
+            const navItem = a.closest('.nav-item');
+            if (navItem) navItem.style.display = keep ? '' : 'none';
+        });
+        
+        // Update prescriptions link to point to doctor prescriptions
+        const prescriptionsLink = document.getElementById('prescriptions-link');
+        if (prescriptionsLink) {
+            prescriptionsLink.href = '/doctor/prescriptions/';
+            prescriptionsLink.innerHTML = '<i class="fas fa-prescription-bottle"></i> Đơn thuốc (Bác sĩ)';
+        }
+        
+        // Update navbar brand link to not point to dashboard for doctors
+        const brandLink = document.querySelector('.navbar-brand');
+        if (brandLink) {
+            brandLink.href = '/doctor/prescriptions/';
+        }
     } catch (e) { /* noop */ }
 }

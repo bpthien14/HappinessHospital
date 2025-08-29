@@ -63,6 +63,11 @@ def pharmacy_inventory_view(request):
 def pharmacist_prescriptions_view(request):
     """Pharmacist prescriptions view - for actions: read, prepare, dispense, update status"""
     return render(request, 'pharmacy/prescriptions.html')
+
+def doctor_prescriptions_view(request):
+    """Doctor prescriptions view - for creating and managing prescriptions"""
+    return render(request, 'doctor/prescriptions.html')
+
 def user_list_view(request):
     """User list view - No authentication required, handled by frontend"""
     return render(request, 'users/user_list.html')

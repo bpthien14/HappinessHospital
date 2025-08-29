@@ -1,0 +1,366 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Đơn thuốc (Bác sĩ) - {{ block.super }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.prescription-card {
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+.prescription-card:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+}
+.status-badge {
+    font-size: 0.8em;
+    padding: 4px 8px;
+}
+.prescription-item {
+    border-left: 3px solid #007bff;
+    padding-left: 10px;
+    margin-bottom: 10px;
+    background: #f8f9fa;
+}
+.drug-dosage {
+    color: #6c757d;
+    font-size: 0.9em;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h2><i class="fas fa-prescription-bottle-alt text-primary"></i> Đơn thuốc (Bác sĩ)</h2>
+                <p class="text-muted">Quản lý đơn thuốc và kê đơn cho bệnh nhân</p>
+            </div>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createPrescriptionModal">
+                <i class="fas fa-plus"></i> Kê đơn thuốc mới
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<!-- <div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h3 id="total-prescriptions">-</h3>
+                        <p class="mb-0">Tổng đơn thuốc</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-prescription-bottle-alt fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h3 id="active-prescriptions">-</h3>
+                        <p class="mb-0">Đang có hiệu lực</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-check-circle fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h3 id="pending-prescriptions">-</h3>
+                        <p class="mb-0">Chờ cấp thuốc</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-clock fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h3 id="today-prescriptions">-</h3>
+                        <p class="mb-0">Hôm nay</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-calendar-day fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div> -->
+
+<!-- Search and Filter -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-search"></i> Tìm kiếm và lọc</h5>
+    </div>
+    <div class="card-body">
+        <form class="row g-3" id="filter-form">
+            <div class="col-md-3">
+                <label for="search-query" class="form-label">Tìm kiếm</label>
+                <input type="text" class="form-control" id="search-query" placeholder="Tên bệnh nhân, số đơn...">
+            </div>
+            <div class="col-md-2">
+                <label for="status-filter" class="form-label">Trạng thái</label>
+                <select class="form-select" id="status-filter">
+                    <option value="">Tất cả</option>
+                    <option value="DRAFT">Nháp</option>
+                    <option value="ACTIVE">Có hiệu lực</option>
+                    <option value="PARTIALLY_DISPENSED">Cấp thuốc một phần</option>
+                    <option value="FULLY_DISPENSED">Đã cấp thuốc đầy đủ</option>
+                    <option value="CANCELLED">Đã hủy</option>
+                    <option value="EXPIRED">Hết hạn</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="type-filter" class="form-label">Loại đơn</label>
+                <select class="form-select" id="type-filter">
+                    <option value="">Tất cả</option>
+                    <option value="OUTPATIENT">Ngoại trú</option>
+                    <option value="INPATIENT">Nội trú</option>
+                    <option value="EMERGENCY">Cấp cứu</option>
+                    <option value="DISCHARGE">Ra viện</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="date-from" class="form-label">Từ ngày</label>
+                <input type="date" class="form-control" id="date-from">
+            </div>
+            <div class="col-md-2">
+                <label for="date-to" class="form-label">Đến ngày</label>
+                <input type="date" class="form-control" id="date-to">
+            </div>
+            <div class="col-md-1">
+                <label class="form-label">&nbsp;</label>
+                <button type="submit" class="btn btn-outline-primary d-block w-100">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Prescriptions List -->
+<div class="card">
+    <div class="card-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-list"></i> Danh sách đơn thuốc</h5>
+            <div>
+                <span class="text-muted">Tổng: <span id="total-count">0</span> đơn thuốc</span>
+            </div>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle" id="prescriptions-table">
+                <thead class="table-light">
+                    <tr>
+                        <th>Số đơn thuốc</th>
+                        <th>Bệnh nhân</th>
+                        <th>Bác sĩ</th>
+                        <th>Ngày kê đơn</th>
+                        <th>Loại đơn</th>
+                        <th>Trạng thái</th>
+                        <th>Tổng tiền</th>
+                        <th>Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody id="prescriptions-table-body">
+                    <tr>
+                        <td colspan="7" class="text-center py-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Đang tải...</span>
+                            </div>
+                            <p class="text-muted mt-2">Đang tải danh sách đơn thuốc...</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <nav id="pagination-nav" class="mt-3">
+            <ul class="pagination justify-content-center" id="pagination-container">
+                <!-- Pagination will be rendered here -->
+            </ul>
+        </nav>
+    </div>
+</div>
+
+<!-- Create Prescription Modal -->
+<div class="modal fade" id="createPrescriptionModal" tabindex="-1" aria-labelledby="createPrescriptionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createPrescriptionModalLabel">
+                    <i class="fas fa-prescription-bottle-alt"></i> Kê đơn thuốc mới
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="create-prescription-form">
+                <div class="modal-body">
+                    <!-- Patient Selection -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="patient-select" class="form-label">
+                                Bệnh nhân <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select" id="patient-select" name="patient" required>
+                                <option value="">Chọn bệnh nhân</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="prescription-type" class="form-label">
+                                Loại đơn thuốc <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select" id="prescription-type" name="prescription_type" required>
+                                <option value="OUTPATIENT">Ngoại trú</option>
+                                <option value="INPATIENT">Nội trú</option>
+                                <option value="EMERGENCY">Cấp cứu</option>
+                                <option value="DISCHARGE">Ra viện</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Diagnosis and Validity -->
+                    <div class="row mb-3">
+                        <div class="col-md-8">
+                            <label for="diagnosis" class="form-label">
+                                Chẩn đoán <span class="text-danger">*</span>
+                            </label>
+                            <textarea class="form-control" id="diagnosis" name="diagnosis" rows="3" required></textarea>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="valid-until" class="form-label">
+                                Có hiệu lực đến <span class="text-danger">*</span>
+                            </label>
+                            <input type="date" class="form-control" id="valid-until" name="valid_until" required>
+                        </div>
+                    </div>
+
+                    <!-- Prescription Items -->
+                    <div class="card mb-3">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">Danh sách thuốc</h6>
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="add-drug-btn">
+                                <i class="fas fa-plus"></i> Thêm thuốc
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div id="prescription-items-container">
+                                <!-- Prescription items will be added here -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Notes -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="notes" class="form-label">Ghi chú của bác sĩ</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="special-instructions" class="form-label">Hướng dẫn đặc biệt</label>
+                            <textarea class="form-control" id="special-instructions" name="special_instructions" rows="3"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Kê đơn thuốc
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- View Prescription Modal -->
+<div class="modal fade" id="viewPrescriptionModal" tabindex="-1" aria-labelledby="viewPrescriptionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="viewPrescriptionModalLabel">
+                    <i class="fas fa-file-medical"></i> Chi tiết đơn thuốc
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="prescription-details">
+                <!-- Prescription details will be loaded here -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                <div id="prescription-actions">
+                    <!-- Action buttons will be added here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Drug Selection Modal -->
+<div class="modal fade" id="drugSelectionModal" tabindex="-1" aria-labelledby="drugSelectionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="drugSelectionModalLabel">
+                    <i class="fas fa-pills"></i> Chọn thuốc
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Drug search -->
+                <div class="mb-3">
+                    <input type="text" class="form-control" id="drug-search" 
+                           placeholder="Tìm thuốc theo tên, mã thuốc, hoạt chất...">
+                </div>
+                
+                <!-- Drug categories filter -->
+                <div class="mb-3">
+                    <select class="form-select" id="drug-category-filter">
+                        <option value="">Tất cả nhóm thuốc</option>
+                    </select>
+                </div>
+                
+                <!-- Drug list -->
+                <div id="drug-list" style="max-height: 400px; overflow-y: auto;">
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Đang tải...</span>
+                        </div>
+                        <p class="text-muted mt-2">Đang tải danh sách thuốc...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+{% load static %}
+<script src="{% static 'js/doctor-prescriptions.js' %}?v=9"></script>
+{% endblock %}

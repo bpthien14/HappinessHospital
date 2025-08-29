@@ -1,0 +1,606 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Quản lý đơn thuốc{% endblock %}
+
+{% block extra_css %}
+<style>
+.drug-card {
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 10px;
+    background: #f8f9fa;
+}
+.prescription-item {
+    border-left: 3px solid #007bff;
+    padding-left: 10px;
+    margin-bottom: 10px;
+}
+.stock-status {
+    font-size: 0.8em;
+    font-weight: bold;
+}
+.stock-low { color: #dc3545; }
+.stock-normal { color: #28a745; }
+.stock-out { color: #6c757d; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Role-based content will be loaded by JavaScript -->
+<div id="loading-spinner" class="text-center py-5">
+    <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Đang tải...</span>
+    </div>
+    <p class="text-muted mt-2">Đang kiểm tra quyền truy cập...</p>
+</div>
+
+<!-- Doctor Interface -->
+<div id="doctor-interface" style="display: none;">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-prescription-bottle-alt"></i> Quản lý Đơn thuốc <small class="text-muted">(Bác sĩ)</small></h2>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addPrescriptionModal">
+            <i class="fas fa-plus"></i> Kê đơn thuốc mới
+        </button>
+    </div>
+
+    <!-- Search and Filter Bar -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form class="row g-3" id="filter-form">
+                <div class="col-md-3">
+                    <label for="search-query" class="form-label">Tìm kiếm</label>
+                    <input type="text" class="form-control" id="search-query" placeholder="Số đơn, tên bệnh nhân...">
+                </div>
+                <div class="col-md-2">
+                    <label for="status-filter" class="form-label">Trạng thái</label>
+                    <select class="form-select" id="status-filter">
+                        <option value="">Tất cả</option>
+                        <option value="DRAFT">Nháp</option>
+                        <option value="ACTIVE">Có hiệu lực</option>
+                        <option value="PARTIALLY_DISPENSED">Cấp thuốc một phần</option>
+                        <option value="FULLY_DISPENSED">Đã cấp thuốc đầy đủ</option>
+                        <option value="CANCELLED">Đã hủy</option>
+                        <option value="EXPIRED">Hết hạn</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="type-filter" class="form-label">Loại đơn</label>
+                    <select class="form-select" id="type-filter">
+                        <option value="">Tất cả</option>
+                        <option value="OUTPATIENT">Ngoại trú</option>
+                        <option value="INPATIENT">Nội trú</option>
+                        <option value="EMERGENCY">Cấp cứu</option>
+                        <option value="DISCHARGE">Ra viện</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="date-filter" class="form-label">Ngày kê đơn</label>
+                    <input type="date" class="form-control" id="date-filter">
+                </div>
+                <div class="col-md-1">
+                    <label class="form-label">&nbsp;</label>
+                    <button type="submit" class="btn btn-outline-primary d-block">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+                <div class="col-md-12 mt-2">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="my-prescriptions-only" checked>
+                        <label class="form-check-label" for="my-prescriptions-only">
+                            Chỉ hiển thị đơn thuốc của tôi
+                        </label>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Prescription Table -->
+    <div class="card">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">Danh sách đơn thuốc</h5>
+                <small class="text-muted">Tổng: <span id="total-count">0</span> đơn thuốc</small>
+            </div>
+            
+            <div class="table-responsive">
+                <table class="table table-hover text-center align-middle" id="prescriptions-table">
+                    <thead class="table-light text-center">
+                        <tr>
+                            <th>Số đơn thuốc</th>
+                            <th>Bệnh nhân</th>
+                            <th>Bác sĩ</th>
+                            <th>Ngày kê đơn</th>
+                            <th>Loại đơn</th>
+                            <th>Trạng thái</th>
+                            <th>Thành tiền</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody id="prescriptions-table-body" class="text-center">
+                        <tr>
+                            <td colspan="8" class="text-center py-4">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Đang tải...</span>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            <nav id="pagination-nav" class="mt-3">
+                <ul class="pagination justify-content-center" id="pagination-container">
+                    <!-- Pagination will be rendered here -->
+                </ul>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Add Prescription Modal -->
+    <div class="modal fade" id="addPrescriptionModal" tabindex="-1" aria-labelledby="addPrescriptionModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addPrescriptionModalLabel">
+                        <i class="fas fa-prescription-bottle-alt"></i> Kê đơn thuốc mới
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="add-prescription-form">
+                    <div class="modal-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="add-patient" class="form-label">Bệnh nhân <span class="text-danger">*</span></label>
+                                <select class="form-select" id="add-patient" name="patient" required>
+                                    <option value="">Chọn bệnh nhân</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="add-prescription-type" class="form-label">Loại đơn thuốc <span class="text-danger">*</span></label>
+                                <select class="form-select" id="add-prescription-type" name="prescription_type" required>
+                                    <option value="">Chọn loại đơn</option>
+                                    <option value="OUTPATIENT">Ngoại trú</option>
+                                    <option value="INPATIENT">Nội trú</option>
+                                    <option value="EMERGENCY">Cấp cứu</option>
+                                    <option value="DISCHARGE">Ra viện</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="add-diagnosis" class="form-label">Chẩn đoán <span class="text-danger">*</span></label>
+                                <textarea class="form-control" id="add-diagnosis" name="diagnosis" rows="3" required></textarea>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="add-valid-until" class="form-label">Có hiệu lực đến <span class="text-danger">*</span></label>
+                                <input type="date" class="form-control" id="add-valid-until" name="valid_until" required>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="add-notes" class="form-label">Ghi chú của bác sĩ</label>
+                                <textarea class="form-control" id="add-notes" name="notes" rows="2"></textarea>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="add-special-instructions" class="form-label">Hướng dẫn đặc biệt</label>
+                                <textarea class="form-control" id="add-special-instructions" name="special_instructions" rows="2"></textarea>
+                            </div>
+                        </div>
+                        
+                        <hr>
+                        
+                        <!-- Prescription Items -->
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6>Danh sách thuốc</h6>
+                            <button type="button" class="btn btn-outline-primary btn-sm" id="add-prescription-item">
+                                <i class="fas fa-plus"></i> Thêm thuốc
+                            </button>
+                        </div>
+                        
+                        <div id="prescription-items-container">
+                            <!-- Prescription items will be added here -->
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Kê đơn thuốc
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Patient Interface (existing prescriptions.js) -->
+<div id="patient-interface" style="display: none;">
+    <!-- This will use the existing prescriptions.js for patients -->
+                        <th>Bệnh nhân</th>
+                        <th>Bác sĩ</th>
+                        <th>Chẩn đoán</th>
+                        <th>Ngày kê đơn</th>
+                        <th>Loại đơn</th>
+                        <th>Trạng thái</th>
+                        <th>Tổng tiền</th>
+                        <th>Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody id="prescriptions-table-body" class="text-center">
+                    <tr>
+                        <td colspan="9" class="text-center py-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Đang tải...</span>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <nav id="pagination-nav" class="mt-3">
+            <ul class="pagination justify-content-center" id="pagination-container">
+                <!-- Pagination will be rendered here -->
+            </ul>
+        </nav>
+    </div>
+</div>
+
+<!-- Add Prescription Modal -->
+<div class="modal fade" id="addPrescriptionModal" tabindex="-1" aria-labelledby="addPrescriptionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addPrescriptionModalLabel">
+                    <i class="fas fa-prescription-bottle-alt"></i> Kê đơn thuốc mới
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="add-prescription-form">
+                <div class="modal-body">
+                    <!-- Patient and Basic Info -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="add-patient" class="form-label">Bệnh nhân <span class="text-danger">*</span></label>
+                            <select class="form-select" id="add-patient" name="patient" required>
+                                <option value="">Chọn bệnh nhân</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="add-appointment" class="form-label">Lịch khám liên quan</label>
+                            <select class="form-select" id="add-appointment" name="appointment">
+                                <option value="">Không liên kết lịch khám</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="add-type" class="form-label">Loại đơn thuốc <span class="text-danger">*</span></label>
+                            <select class="form-select" id="add-type" name="prescription_type" required>
+                                <option value="OUTPATIENT">Ngoại trú</option>
+                                <option value="INPATIENT">Nội trú</option>
+                                <option value="EMERGENCY">Cấp cứu</option>
+                                <option value="DISCHARGE">Ra viện</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="add-valid-until" class="form-label">Có hiệu lực đến <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="add-valid-until" name="valid_until" required>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <label for="add-diagnosis" class="form-label">Chẩn đoán <span class="text-danger">*</span></label>
+                            <textarea class="form-control" id="add-diagnosis" name="diagnosis" rows="2" required></textarea>
+                        </div>
+                    </div>
+                    
+                    <!-- Drug Selection -->
+                    <div class="card mb-3">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">Danh sách thuốc</h6>
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="add-drug-btn">
+                                <i class="fas fa-plus"></i> Thêm thuốc
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div id="drugs-container">
+                                <!-- Drug items will be added here -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <label for="add-notes" class="form-label">Ghi chú của bác sĩ</label>
+                            <textarea class="form-control" id="add-notes" name="notes" rows="2"></textarea>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <label for="add-special-instructions" class="form-label">Hướng dẫn đặc biệt</label>
+                            <textarea class="form-control" id="add-special-instructions" name="special_instructions" rows="2"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Kê đơn thuốc
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- View Prescription Modal -->
+<div class="modal fade" id="viewPrescriptionModal" tabindex="-1" aria-labelledby="viewPrescriptionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="viewPrescriptionModalLabel">
+                    <i class="fas fa-file-medical"></i> Chi tiết đơn thuốc
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Basic Info -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <table class="table table-borderless">
+                            <tr>
+                                <td><strong>Số đơn thuốc:</strong></td>
+                                <td id="view-prescription-number"></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Bệnh nhân:</strong></td>
+                                <td id="view-patient-name"></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Bác sĩ:</strong></td>
+                                <td id="view-doctor-name"></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Ngày kê đơn:</strong></td>
+                                <td id="view-prescription-date"></td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <table class="table table-borderless">
+                            <tr>
+                                <td><strong>Loại đơn thuốc:</strong></td>
+                                <td id="view-prescription-type"></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Trạng thái:</strong></td>
+                                <td id="view-status"></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Có hiệu lực đến:</strong></td>
+                                <td id="view-valid-until"></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Tổng tiền:</strong></td>
+                                <td id="view-total-amount"></td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Diagnosis and Notes -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <strong>Chẩn đoán:</strong>
+                        <p id="view-diagnosis" class="mt-2"></p>
+                    </div>
+                    <div class="col-12">
+                        <strong>Ghi chú:</strong>
+                        <p id="view-notes" class="mt-2"></p>
+                    </div>
+                </div>
+                
+                <!-- Drug Items -->
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0">Danh sách thuốc</h6>
+                    </div>
+                    <div class="card-body">
+                        <div id="view-drug-items">
+                            <!-- Drug items will be displayed here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                <div id="view-prescription-actions">
+                    <!-- Action buttons will be added here based on prescription status -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Drug Selection Modal -->
+<div class="modal fade" id="drugSelectionModal" tabindex="-1" aria-labelledby="drugSelectionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="drugSelectionModalLabel">
+                    <i class="fas fa-pills"></i> Chọn thuốc
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Search -->
+                <div class="mb-3">
+                    <input type="text" class="form-control" id="drug-search" placeholder="Tìm thuốc theo tên, mã, hoạt chất...">
+                </div>
+                
+                <!-- Drug List -->
+                <div id="drug-list" style="max-height: 400px; overflow-y: auto;">
+                    <!-- Drugs will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% load static %}
+<script>
+// Role-based JavaScript loading
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🏥 Prescriptions page loading...');
+    
+    // Function to initialize interface based on role
+    function initializeInterface() {
+        console.log('🔍 Checking currentUser:', window.currentUser);
+        
+        // Check user role and show appropriate interface
+        if (isDoctorUser()) {
+            console.log('✅ Loading Doctor interface');
+            document.getElementById('loading-spinner').style.display = 'none';
+            document.getElementById('doctor-interface').style.display = 'block';
+            
+            // Load doctor-specific scripts
+            const doctorScript = document.createElement('script');
+            doctorScript.src = "{% static 'js/doctor-prescriptions.js' %}?v=1";
+            document.head.appendChild(doctorScript);
+            
+        } else if (isPatientUser()) {
+            console.log('✅ Loading Patient interface');
+            document.getElementById('loading-spinner').style.display = 'none';
+            document.getElementById('patient-interface').style.display = 'block';
+            
+            // Load patient-specific scripts
+            const patientScript = document.createElement('script');
+            patientScript.src = "{% static 'js/prescriptions.js' %}?v=1";
+            document.head.appendChild(patientScript);
+            
+        } else {
+            console.log('⚠️ No appropriate role found, currentUser:', window.currentUser);
+            console.log('⚠️ isDoctorUser():', isDoctorUser());
+            console.log('⚠️ isPatientUser():', isPatientUser());
+            showRoleError();
+        }
+    }
+    
+    // Wait for currentUser to be available
+    let waitAttempts = 0;
+    const maxAttempts = 50; // 5 seconds max (50 * 100ms)
+    
+    function waitForCurrentUser() {
+        waitAttempts++;
+        console.log(`⏳ Waiting for currentUser... (attempt ${waitAttempts}/${maxAttempts})`);
+        console.log('🔍 window.currentUser:', window.currentUser);
+        console.log('🔍 localStorage user_data:', localStorage.getItem('user_data'));
+        
+        if (window.currentUser) {
+            console.log('✅ currentUser is available, initializing interface');
+            initializeInterface();
+        } else if (waitAttempts >= maxAttempts) {
+            console.log('❌ Timeout waiting for currentUser, trying fallback');
+            // Fallback: try to load from localStorage directly
+            try {
+                const userData = localStorage.getItem('user_data');
+                if (userData) {
+                    window.currentUser = JSON.parse(userData);
+                    console.log('✅ Loaded currentUser from localStorage:', window.currentUser);
+                    initializeInterface();
+                } else {
+                    console.log('❌ No user data in localStorage');
+                    showRoleError();
+                }
+            } catch (e) {
+                console.error('❌ Error loading user data from localStorage:', e);
+                showRoleError();
+            }
+        } else {
+            setTimeout(waitForCurrentUser, 100); // Check every 100ms
+        }
+    }
+    
+    // Start checking after a short delay
+    setTimeout(waitForCurrentUser, 500);
+});
+
+/**
+ * Check if current user is a doctor
+ */
+function isDoctorUser() {
+    try {
+        if (!window.currentUser) return false;
+        
+        // Check user_type
+        if (window.currentUser.user_type === 'DOCTOR') return true;
+        
+        // Check roles array
+        const roles = Array.isArray(window.currentUser.roles) ? window.currentUser.roles : [];
+        return roles.includes('Doctor') || roles.includes('DOCTOR');
+    } catch (e) {
+        console.error('Error checking doctor role:', e);
+        return false;
+    }
+}
+
+/**
+ * Check if current user is a patient
+ */
+function isPatientUser() {
+    try {
+        if (!window.currentUser) return false;
+        
+        // Check user_type
+        if (window.currentUser.user_type === 'PATIENT') return true;
+        
+        // Check roles array
+        const roles = Array.isArray(window.currentUser.roles) ? window.currentUser.roles : [];
+        return roles.includes('Patient') || roles.includes('PATIENT');
+    } catch (e) {
+        console.error('Error checking patient role:', e);
+        return false;
+    }
+}
+
+/**
+ * Show error when user doesn't have appropriate role
+ */
+function showRoleError() {
+    const container = document.querySelector('.container-fluid');
+    if (container) {
+        container.innerHTML = `
+            <div class="row justify-content-center">
+                <div class="col-md-6">
+                    <div class="card mt-5">
+                        <div class="card-body text-center">
+                            <i class="fas fa-prescription-bottle-alt fa-3x text-muted mb-3"></i>
+                            <h4>Quyền truy cập bị hạn chế</h4>
+                            <p class="text-muted">
+                                Trang này chỉ dành cho Bác sĩ (kê đơn thuốc) hoặc Bệnh nhân (xem đơn thuốc).
+                            </p>
+                            <a href="/dashboard/" class="btn btn-primary">
+                                <i class="fas fa-home"></i> Về trang chủ
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+}
+</script>
+{% endblock %}
