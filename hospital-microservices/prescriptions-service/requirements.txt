@@ -6,3 +6,4 @@ drf-spectacular==0.26.5
 pika==1.3.2
 python-dotenv==1.0.0
 requests==2.31.0
+django-filter==23.3

@@ -22,6 +22,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'drf_spectacular',
+    'django_filters',
+    'appointments',
 ]
 
 MIDDLEWARE = [
@@ -89,6 +91,11 @@ USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# Media files
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
@@ -102,6 +109,11 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
+    'DEFAULT_FILTER_BACKENDS': [
+        'django_filters.rest_framework.DjangoFilterBackend',
+    ],
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 20,
 }
 
 # Spectacular settings
@@ -110,6 +122,12 @@ SPECTACULAR_SETTINGS = {
     'DESCRIPTION': 'Appointments management service for Hospital Management System',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
+    'TAGS': [
+        {'name': 'departments', 'description': 'Hospital department management'},
+        {'name': 'doctors', 'description': 'Doctor profile and schedule management'},
+        {'name': 'appointments', 'description': 'Appointment scheduling and management'},
+        {'name': 'time-slots', 'description': 'Available time slots for booking'},
+    ],
 }
 
 # Logging
