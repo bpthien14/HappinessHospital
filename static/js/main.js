@@ -6,6 +6,27 @@ let currentUser = null;
 let interceptorsReady = false;
 let isAuthenticated = false;
 let appInitialized = false;
+let axiosReady = false;
+
+// Wait for axios to be available
+function ensureAxios() {
+    return new Promise((resolve) => {
+        if (typeof axios !== 'undefined') {
+            axiosReady = true;
+            resolve();
+        } else {
+            const checkAxios = () => {
+                if (typeof axios !== 'undefined') {
+                    axiosReady = true;
+                    resolve();
+                } else {
+                    setTimeout(checkAxios, 50);
+                }
+            };
+            checkAxios();
+        }
+    });
+}
 
 function isPublicPath() {
     try {
@@ -24,11 +45,15 @@ function isPublicPath() {
     }
 }
 
-function bootApplication() {
+async function bootApplication() {
     if (appInitialized) {
         return;
     }
     appInitialized = true;
+    
+    // Wait for axios first
+    await ensureAxios();
+    
     // Thực thi chặn role-based ngay khi có thể (trước cả initializeAuth)
     try { earlyRoleEnforcement(); } catch (e) { /* noop */ }
     // Nếu là trang công khai, chỉ cần cập nhật navbar và gắn sự kiện, không khởi chạy luồng auth

@@ -116,7 +116,12 @@ class PrescriptionItemSerializer(serializers.ModelSerializer):
         ]
 
 class PrescriptionSerializer(serializers.ModelSerializer):
-    # Flat fields for compatibility
+
+    # Full nested objects with lazy import to avoid circular imports
+    patient = serializers.SerializerMethodField()
+    doctor = serializers.SerializerMethodField()
+    
+    # Backward compatibility fields
     patient_name = serializers.CharField(source='patient.full_name', read_only=True)
     patient_code = serializers.CharField(source='patient.patient_code', read_only=True)
     patient_phone = serializers.CharField(source='patient.phone_number', read_only=True)
@@ -164,6 +169,44 @@ class PrescriptionSerializer(serializers.ModelSerializer):
     
     def get_items_count(self, obj):
         return obj.items.count()
+    
+    def get_patient(self, obj):
+        """Return full patient information"""
+        if obj.patient:
+            return {
+                'id': str(obj.patient.id),
+                'full_name': obj.patient.full_name,
+                'patient_code': obj.patient.patient_code,
+                'phone_number': obj.patient.phone_number,
+                'date_of_birth': obj.patient.date_of_birth,
+                'gender': obj.patient.gender,
+                'citizen_id': obj.patient.citizen_id,
+                'address': obj.patient.address,
+                'ward': obj.patient.ward,
+                'province': obj.patient.province,
+                'has_insurance': obj.patient.has_insurance,
+            }
+        return None
+    
+    def get_doctor(self, obj):
+        """Return full doctor information"""
+        if obj.doctor:
+            user = obj.doctor.user if getattr(obj.doctor, 'user', None) else None
+            department = getattr(obj.doctor, 'department', None)
+            return {
+                'id': str(obj.doctor.id),
+                'user': {
+                    'id': str(user.id),
+                    'full_name': user.full_name,
+                    'email': user.email,
+                } if user else None,
+                'employee_id': getattr(user, 'employee_id', None),
+                'department': getattr(department, 'name', None),
+                'department_id': str(getattr(department, 'id')) if getattr(department, 'id', None) else None,
+                'specialization': obj.doctor.specialization,
+                'license_number': obj.doctor.license_number,
+            }
+        return None
 
 class PrescriptionCreateSerializer(serializers.ModelSerializer):
     items = PrescriptionItemSerializer(many=True, write_only=True)

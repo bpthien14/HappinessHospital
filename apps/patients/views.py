@@ -50,9 +50,15 @@ class PatientViewSet(ModelViewSet):
             return [permissions.AllowAny()]
         elif self.action == 'create':
             self.required_permissions = ['PATIENT:CREATE']
-        elif self.action == 'update':
-            self.required_permissions = ['PATIENT:UPDATE']
-        elif self.action == 'partial_update':
+        elif self.action in ['update', 'partial_update']:
+            # Cho phép bệnh nhân cập nhật hồ sơ của CHÍNH MÌNH (đối chiếu theo phone_number)
+            # Các user khác vẫn yêu cầu quyền hệ thống
+            try:
+                if getattr(self.request.user, 'is_authenticated', False) and getattr(self.request.user, 'user_type', None) == 'PATIENT':
+                    self.permission_classes = [permissions.IsAuthenticated]
+                    return [permissions.IsAuthenticated()]
+            except Exception:
+                pass
             self.required_permissions = ['PATIENT:UPDATE']
         elif self.action == 'destroy':
             self.required_permissions = ['PATIENT:DELETE']
@@ -70,45 +76,24 @@ class PatientViewSet(ModelViewSet):
     
     def perform_create(self, serializer):
         instance = serializer.save(created_by=self.request.user, updated_by=self.request.user)
-
-        # Auto-create user account for patient
-        print(f"🔄 Starting auto-creation of user account for patient: {instance.full_name} (Phone: {instance.phone_number})")
-
+        # Auto-create user account for patient (silent mode)
         try:
-            # Check if user already exists
             from django.contrib.auth import get_user_model
             User = get_user_model()
             existing_user = User.objects.filter(username=instance.phone_number).first()
-
             if existing_user:
-                print(f"⚠️ User account already exists for patient {instance.full_name}: {existing_user.username}")
-                print(f"   Skipping user creation...")
                 return
-
-
-
-            # Split full_name into first_name and last_name
             name_parts = instance.full_name.strip().split()
             first_name = name_parts[0] if name_parts else instance.full_name
             last_name = ' '.join(name_parts[1:]) if len(name_parts) > 1 else ''
-
-            print(f"📝 Preparing user data - First: '{first_name}', Last: '{last_name}'")
-            print(f"📅 Patient date_of_birth: {instance.date_of_birth} (type: {type(instance.date_of_birth)})")
-
-            # Handle date_of_birth carefully
             dob_value = None
             if instance.date_of_birth:
                 try:
                     dob_value = instance.date_of_birth.strftime('%Y-%m-%d')
-                    print(f"✅ Date formatted successfully: {dob_value}")
-                except Exception as date_error:
-                    print(f"⚠️ Date formatting error: {date_error}")
+                except Exception:
                     dob_value = None
-
-            # Tạo password: benhnhan + 3 số cuối phone number
             phone_last_3 = instance.phone_number[-3:] if len(instance.phone_number) >= 3 else instance.phone_number
             default_password = f"benhnhan{phone_last_3}"
-
             user_data = {
                 'username': instance.phone_number,
                 'password': default_password,
@@ -120,48 +105,28 @@ class PatientViewSet(ModelViewSet):
                 'phone_number': instance.phone_number,
                 'date_of_birth': dob_value,
                 'address': instance.address
-                # Không set employee_id và department để tránh trùng lặp
             }
-
-            # Remove empty values
             user_data = {k: v for k, v in user_data.items() if v not in ['', None]}
-            print(f"📊 Final user data: {user_data}")
-            print(f"🔑 Default password: {default_password}")
-
-            # Create user account
-            print(f"🔧 Creating user with serializer...")
             user_serializer = UserCreateSerializer(data=user_data)
-
-            print(f"📋 Serializer is_valid: {user_serializer.is_valid()}")
-            if not user_serializer.is_valid():
-                print(f"❌ Serializer errors: {user_serializer.errors}")
-                # Print detailed validation errors
-                for field, errors in user_serializer.errors.items():
-                    print(f"   {field}: {errors}")
-                return
-
-            try:
-                user = user_serializer.save()
-                print(f"✅ SUCCESS: Auto-created user account for patient {instance.full_name}")
-                print(f"   Username: {user.username}")
-                print(f"   Full name: {user.full_name}")
-                print(f"   User type: {user.user_type}")
-                print(f"   Date of birth: {user.date_of_birth}")
-            except Exception as save_error:
-                print(f"💥 SAVE ERROR: {save_error}")
-                import traceback
-                print(f"   Save traceback: {traceback.format_exc()}")
-
-        except Exception as e:
-            # Don't fail patient creation if user creation fails
-            print(f"💥 EXCEPTION: Error creating user account for patient {instance.full_name}")
-            print(f"   Error type: {type(e).__name__}")
-            print(f"   Error message: {str(e)}")
-            import traceback
-            print(f"   Traceback: {traceback.format_exc()}")
-            # Continue without raising exception to avoid failing patient creation
+            if user_serializer.is_valid():
+                user_serializer.save()
+        except Exception:
+            pass
     
     def perform_update(self, serializer):
+        # Nếu là bệnh nhân, chỉ cho phép cập nhật hồ sơ trùng SĐT của chính mình
+        user = self.request.user
+        if getattr(user, 'is_authenticated', False) and getattr(user, 'user_type', None) == 'PATIENT':
+            try:
+                patient_obj = self.get_object()
+                if not patient_obj or str(patient_obj.phone_number) != str(getattr(user, 'phone_number', '')):
+                    from rest_framework.exceptions import PermissionDenied
+                    raise PermissionDenied('Bạn chỉ được phép cập nhật hồ sơ của chính mình')
+            except PermissionDenied:
+                raise
+            except Exception:
+                from rest_framework.exceptions import PermissionDenied
+                raise PermissionDenied('Không thể xác thực quyền sở hữu hồ sơ')
         serializer.save(updated_by=self.request.user)
     
     @extend_schema(
