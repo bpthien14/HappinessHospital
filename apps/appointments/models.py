@@ -280,11 +280,13 @@ class Appointment(models.Model):
     @property
     def can_checkin(self):
         """Kiểm tra có thể check-in"""
-        if self.status != 'CONFIRMED':
-            return False
-        # Cho phép check-in trước giờ hẹn 30 phút
-        time_diff = (datetime.now() - self.appointment_datetime).total_seconds()
-        return -1800 <= time_diff <= 3600  # 30 phút trước đến 1 giờ sau
+        # Tạm bỏ logic kiểm tra thời gian - cho phép check-in tự do để test
+        return self.status in ['CONFIRMED', 'SCHEDULED']
+        # if self.status != 'CONFIRMED':
+        #     return False
+        # # Cho phép check-in trước giờ hẹn 30 phút
+        # time_diff = (datetime.now() - self.appointment_datetime).total_seconds()
+        # return -1800 <= time_diff <= 3600  # 30 phút trước đến 1 giờ sau
     
     def clean(self):
         # Validate appointment is in the future

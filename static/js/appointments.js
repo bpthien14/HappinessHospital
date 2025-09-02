@@ -170,7 +170,7 @@ async function loadAppointments(page = 1) {
 
 async function loadFormData() {
     try {
-        console.log('📋 Loading form data...');
+
         
         // Load departments
         const deptResponse = await axios.get('/api/departments/');
@@ -604,7 +604,7 @@ async function confirmAppointment(appointmentId) {
     try {
         console.log('📅 Confirming appointment:', appointmentId);
         
-        const response = await axios.post(`/api/appointments/${appointment.id}/confirm/`);
+        const response = await axios.post(`/api/appointments/${appointmentId}/confirm/`);
         console.log('📅 Appointment confirmed:', response.data);
         
         showAlert('Xác nhận lịch hẹn thành công!', 'success');
@@ -636,9 +636,7 @@ async function checkinAppointment(appointmentId) {
 }
 
 async function cancelAppointment(appointmentId) {
-    if (!confirm('Bạn có chắc chắn muốn hủy lịch hẹn này?')) {
-        return;
-    }
+    // Removed browser confirm - use UI modal if needed
     
     try {
         console.log('📅 Cancelling appointment:', appointmentId);
@@ -675,9 +673,7 @@ async function startExamination(appointmentId) {
 }
 
 async function completeAppointment(appointmentId) {
-    if (!confirm('Bạn có chắc chắn muốn hoàn thành lịch hẹn này?')) {
-        return;
-    }
+    // Removed browser confirm - use UI modal if needed
     
     try {
         console.log('📅 Completing appointment:', appointmentId);

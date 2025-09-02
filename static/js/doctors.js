@@ -521,9 +521,7 @@ async function editDoctor(doctorId) {
 }
 
 async function deleteDoctor(doctorId) {
-    if (!confirm('Bạn có chắc chắn muốn xóa bác sĩ này?\n\nLưu ý: Hành động này không thể hoàn tác!')) {
-        return;
-    }
+    // Removed browser confirm - use UI modal if needed
     
     try {
         console.log('🩺 Deleting doctor:', doctorId);

@@ -70,6 +70,24 @@ class Payment(models.Model):
     @property
     def is_success(self) -> bool:
         return self.status == 'PAID'
+    
+    def save(self, *args, **kwargs):
+        # Kiểm tra nếu trạng thái chuyển sang PAID
+        is_new = self.pk is None
+        old_status = None
+        
+        if not is_new:
+            try:
+                old_payment = Payment.objects.get(pk=self.pk)
+                old_status = old_payment.status
+            except Payment.DoesNotExist:
+                old_status = None
+        
+        super().save(*args, **kwargs)
+        
+        # Nếu thanh toán thành công, cập nhật dispensing status từ UNPAID sang PENDING
+        if self.status == 'PAID' and old_status != 'PAID':
+            self.prescription.mark_as_paid()
 
     @staticmethod
     def calculate_due_amount(prescription) -> Decimal:

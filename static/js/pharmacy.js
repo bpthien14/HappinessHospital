@@ -158,7 +158,15 @@ async function loadCategories() {
                 toggleAddSubmit(false);
             }
         } else {
+            // Sử dụng Set để loại bỏ duplicate categories
+            const uniqueCategories = new Map();
             data.forEach(c => {
+                if (!uniqueCategories.has(c.name)) {
+                    uniqueCategories.set(c.name, c);
+                }
+            });
+            
+            uniqueCategories.forEach(c => {
                 const opt = document.createElement('option');
                 opt.value = c.id; opt.textContent = `${c.name}`;
                 select && select.appendChild(opt.cloneNode(true));
@@ -187,13 +195,14 @@ function loadEnums() {
 async function loadDrugs() {
     try {
         const params = new URLSearchParams({ page: dgCurrentPage, page_size: 10 });
-        const q = document.getElementById('search-query').value.trim();
-        const cat = document.getElementById('category-filter').value;
-        const stock = document.getElementById('stock-filter').value;
+        const searchInput = document.getElementById('search-query');
+        const categoryFilter = document.getElementById('category-filter');
+        
+        const q = searchInput ? searchInput.value.trim() : '';
+        const cat = categoryFilter ? categoryFilter.value : '';
+        
         if (q) params.append('search', q);
         if (cat) params.append('category', cat);
-        if (stock === 'low') params.append('is_low_stock', 'true');
-        if (stock === 'ok') params.append('is_low_stock', 'false');
         const res = await axios.get(`/api/drugs/?${params}`);
         renderDrugs(res.data.results || []);
         updatePagination(res.data);

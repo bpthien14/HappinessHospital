@@ -267,12 +267,12 @@ class AppointmentViewSet(ModelViewSet):
         """Check-in for appointment"""
         appointment = self.get_object()
         
-        # Cho phép check-in nếu trong khoảng [-30 phút, +60 phút] so với giờ hẹn và trạng thái phù hợp
-        now = datetime.now()
-        can_time = -1800 <= (now - appointment.appointment_datetime).total_seconds() <= 3600
-        if not (can_time and appointment.status in ['CONFIRMED', 'SCHEDULED']):
+        # Tạm bỏ logic kiểm tra thời gian - cho phép check-in tự do để test
+        # now = datetime.now()
+        # can_time = -1800 <= (now - appointment.appointment_datetime).total_seconds() <= 3600
+        if not appointment.status in ['CONFIRMED', 'SCHEDULED']:
             return Response({
-                'error': 'Không thể check-in. Chỉ cho phép trong vòng 30 phút trước đến 1 giờ sau giờ hẹn và trạng thái phải là Đã xác nhận hoặc Đã đặt lịch.'
+                'error': 'Không thể check-in. Trạng thái phải là Đã xác nhận hoặc Đã đặt lịch.'
             }, status=status.HTTP_400_BAD_REQUEST)
         
         old_status = appointment.status

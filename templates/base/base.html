@@ -163,24 +163,9 @@
     <!-- Custom JS (cache-busting) -->
     <script src="{% static 'js/main.js' %}?v=9"></script>
     <script>
-        // Debug current user immediately when page loads
-        setTimeout(() => {
-            console.log('🔍 Page loaded - checking currentUser:', currentUser);
-            console.log('🔍 Is authenticated:', isAuthenticated);
-            if (currentUser) {
-                console.log('🔍 User type:', currentUser.user_type);
-                console.log('🔍 Is DOCTOR?', currentUser.user_type === 'DOCTOR');
-            }
-            // Manual trigger test
-            console.log('🔍 Manual trigger available as: window.forceRoleRestrictions()');
-            // Auto trigger for testing
-            if (currentUser && currentUser.user_type === 'DOCTOR') {
-                console.log('🔍 Auto-triggering role restrictions for DOCTOR');
-                setTimeout(() => window.forceRoleRestrictions(), 500);
-            }
-        }, 1000);
+        // Role restrictions are handled by main.js automatically
     </script>
-    <script src="{% load static %}{% static 'js/main.js' %}?v=5"></script>
+    
 
     
     {% block extra_js %}{% endblock %}

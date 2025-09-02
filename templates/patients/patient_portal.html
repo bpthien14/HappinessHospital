@@ -359,6 +359,9 @@ document.addEventListener('click', function(e) {
         const btn = e.target.closest('.portal-nav .btn');
         const tabName = btn.dataset.tab;
         
+        // Save active tab to localStorage
+        localStorage.setItem('portalActiveTab', tabName);
+        
         // Update buttons
         document.querySelectorAll('.portal-nav .btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
@@ -375,6 +378,33 @@ document.addEventListener('click', function(e) {
         else if (tabName === 'profile') loadMyProfile();
     }
 });
+
+// Restore active tab on page load
+function restoreActiveTab() {
+    const savedTab = localStorage.getItem('portalActiveTab');
+    if (savedTab) {
+        const tabBtn = document.querySelector(`[data-tab="${savedTab}"]`);
+        if (tabBtn) {
+            // Update buttons
+            document.querySelectorAll('.portal-nav .btn').forEach(b => b.classList.remove('active'));
+            tabBtn.classList.add('active');
+            
+            // Update content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.style.display = 'none';
+            });
+            const contentEl = document.getElementById(savedTab + '-content');
+            if (contentEl) {
+                contentEl.style.display = 'block';
+                
+                // Load data for specific tabs
+                if (savedTab === 'history') loadMyAppointments();
+                else if (savedTab === 'payment') loadMyPayments();
+                else if (savedTab === 'profile') loadMyProfile();
+            }
+        }
+    }
+}
 
 // Logout button - no browser confirmation
 document.getElementById('pp-logout').addEventListener('click', function() {
@@ -980,9 +1010,19 @@ async function loadMyPayments() {
         // Helper to check if a prescription is eligible for payment
         const isPrescriptionEligible = (p) => {
             if (!p) return false;
-            const status = (p.status || '').toUpperCase();
+            const dispensingStatus = (p.dispensing_status || '').toUpperCase();
             const amount = Number(p.patient_payment_amount || p.total_amount || 0);
-            return status === 'ACTIVE' && amount > 0;
+            // Chỉ cho phép thanh toán khi dispensing status là UNPAID
+            return dispensingStatus === 'UNPAID' && amount > 0;
+        };
+        
+        // Helper to check if prescription should be displayed (including cancelled ones)
+        const shouldDisplayPrescription = (p) => {
+            if (!p) return false;
+            const dispensingStatus = (p.dispensing_status || '').toUpperCase();
+            const amount = Number(p.patient_payment_amount || p.total_amount || 0);
+            // Hiển thị tất cả đơn thuốc có amount > 0, kể cả CANCELLED
+            return amount > 0 && ['UNPAID', 'PENDING', 'PREPARED', 'DISPENSED', 'CANCELLED'].includes(dispensingStatus);
         };
 
         // Display existing payments (remove duplicates)
@@ -1017,19 +1057,55 @@ async function loadMyPayments() {
             tbody.appendChild(row);
         });
 
-        // Display prescriptions without payments (unpaid) - remove duplicates
+        // Display all prescriptions that should be shown - remove duplicates
         const paidPrescriptionNumbers = uniquePayments.map(p => p.prescription_number);
-        const unpaidPrescriptions = prescriptions
+        const displayPrescriptions = prescriptions
             .filter(p => !paidPrescriptionNumbers.includes(p.prescription_number))
-            .filter(p => ((p.status || '').toUpperCase() === 'ACTIVE') && (Number(p.patient_payment_amount || p.total_amount || 0) > 0))
+            .filter(p => shouldDisplayPrescription(p)) // Hiển thị tất cả đơn thuốc có liên quan
             .filter((prescription, index, self) =>
                 index === self.findIndex(p => p.prescription_number === prescription.prescription_number)
             );
 
 
 
-        unpaidPrescriptions.forEach(prescription => {
+        displayPrescriptions.forEach(prescription => {
             const row = document.createElement('tr');
+            const dispensingStatus = (prescription.dispensing_status || '').toUpperCase();
+            const isEligible = isPrescriptionEligible(prescription);
+            
+            // Xác định badge và text dựa trên dispensing_status
+            let statusBadge = 'bg-secondary';
+            let statusText = 'Không xác định';
+            let actionButtons = '';
+            
+            switch(dispensingStatus) {
+                case 'UNPAID':
+                    statusBadge = 'bg-danger';
+                    statusText = 'Chưa thanh toán';
+                    break;
+                case 'PENDING':
+                    statusBadge = 'bg-warning';
+                    statusText = 'Chờ cấp thuốc';
+                    break;
+                case 'PREPARED':
+                    statusBadge = 'bg-info';
+                    statusText = 'Đã chuẩn bị';
+                    break;
+                case 'DISPENSED':
+                    statusBadge = 'bg-success';
+                    statusText = 'Đã cấp thuốc';
+                    break;
+                case 'CANCELLED':
+                    statusBadge = 'bg-dark';
+                    statusText = 'Đã hủy';
+                    break;
+            }
+            
+            // Chỉ có nút Chi tiết cho tất cả trạng thái
+            actionButtons = `<button class="btn btn-outline-primary btn-sm" onclick="viewPrescriptionDetail('${prescription.id}')">
+                <i class="fas fa-eye"></i> Chi tiết
+            </button>`;
+            
             row.innerHTML = `
                 <td class="text-center">${formatDate(prescription.prescription_date)}</td>
                 <td>
@@ -1037,23 +1113,18 @@ async function loadMyPayments() {
                     <div class="small text-muted">${prescription.diagnosis || ''}</div>
                 </td>
                 <td class="text-center">${(prescription.patient_payment_amount || prescription.total_amount || 0).toLocaleString()} VNĐ</td>
-                <td class="text-center"><span class="badge bg-warning">Chưa thanh toán</span></td>
+                <td class="text-center"><span class="badge ${statusBadge}">${statusText}</span></td>
                 <td class="text-center">
                     <div class="btn-group-vertical btn-group-sm">
-                        <button class="btn btn-outline-info btn-sm" onclick="viewPrescriptionDetail('${prescription.id}')">
-                            <i class="fas fa-eye"></i> Chi tiết
-                        </button>
-                        <button class="btn btn-primary btn-sm" onclick="createPaymentAndPay('${prescription.id}', '${prescription.prescription_number}')">
-                            <i class="fas fa-credit-card"></i> Thanh toán
-                        </button>
+                        ${actionButtons}
                     </div>
                 </td>
             `;
             tbody.appendChild(row);
         });
 
-        if (payments.length === 0 && unpaidPrescriptions.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Chưa có đơn thuốc nào cần thanh toán</td></tr>';
+        if (payments.length === 0 && displayPrescriptions.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Chưa có đơn thuốc nào</td></tr>';
         }
 
         console.log('✅ Payments loaded successfully');
@@ -1154,8 +1225,17 @@ async function viewPrescriptionDetail(prescriptionId) {
         document.getElementById('patient-dob').textContent = formatDate(prescription.patient?.date_of_birth) || 'N/A';
         
         // Update doctor info
-        document.getElementById('doctor-name').textContent = prescription.doctor?.user?.full_name || 'N/A';
-        document.getElementById('doctor-specialty').textContent = prescription.doctor?.department || 'N/A';
+        let doctorName = 'N/A';
+        if (prescription.doctor_name) {
+            doctorName = prescription.doctor_name;
+        } else if (prescription.doctor?.user?.full_name) {
+            doctorName = prescription.doctor.user.full_name;
+        } else if (prescription.doctor?.user?.first_name || prescription.doctor?.user?.last_name) {
+            doctorName = `${prescription.doctor.user.first_name || ''} ${prescription.doctor.user.last_name || ''}`.trim();
+        }
+        
+        document.getElementById('doctor-name').textContent = doctorName;
+        document.getElementById('doctor-specialty').textContent = prescription.doctor_specialization || prescription.doctor?.specialization || 'N/A';
         document.getElementById('prescription-date').textContent = formatDate(prescription.prescription_date);
         
         // Update status
@@ -1199,7 +1279,8 @@ async function viewPrescriptionDetail(prescriptionId) {
         
         // Show/hide payment button
         const paymentBtn = document.getElementById('prescription-payment-btn');
-        if (prescription.status === 'ACTIVE' && prescription.patient_payment_amount > 0) {
+        const dispensingStatus = (prescription.dispensing_status || '').toUpperCase();
+        if (dispensingStatus === 'UNPAID' && prescription.patient_payment_amount > 0) {
             paymentBtn.style.display = 'block';
             paymentBtn.onclick = () => {
                 modal.hide();
@@ -1545,6 +1626,11 @@ if (typeof HospitalApp !== 'undefined' && HospitalApp.onAxiosReady) {
     // If HospitalApp is not available, just initialize immediately
     safeInitialize();
 }
+
+// Restore active tab when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    restoreActiveTab();
+});
 </script>
 
 <!-- Modal chi tiết đơn thuốc -->

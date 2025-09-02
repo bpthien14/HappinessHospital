@@ -383,10 +383,15 @@ function filterNavbarForReception() {
 
 function applyRoleBasedRestrictions() {
     // Apply both navbar filtering and route guard
+    // Thứ tự quan trọng: check specific roles trước generic roles
     filterNavbarForReception();
     enforceReceptionRouteGuard();
+    
+    // Check Pharmacist trước Doctor để tránh conflict
     filterNavbarForPharmacist();
     enforcePharmacistRouteGuard();
+    
+    // Check Doctor sau cùng
     filterNavbarForDoctor();
     enforceDoctorRouteGuard();
 }
@@ -418,7 +423,8 @@ function isPharmacistUser() {
 function isAllowedPharmacistPath(pathname) {
     try {
         const path = (pathname.endsWith('/') ? pathname : pathname + '/').toLowerCase();
-        return path.startsWith('/pharmacy/') || path.startsWith('/prescriptions/');
+        // Chỉ cho phép các đường dẫn trong /pharmacy/
+        return path.startsWith('/pharmacy/');
     } catch (e) { return false; }
 }
 
@@ -427,9 +433,12 @@ function enforcePharmacistRouteGuard() {
         if (!isAuthenticated || !isPharmacistUser()) return;
         const url = new URL(window.location.href);
         if (!isAllowedPharmacistPath(url.pathname)) {
+            console.log('Pharmacist redirect: từ', url.pathname, 'đến /pharmacy/');
             window.location.replace('/pharmacy/');
+            return true; // Đã redirect, ngừng xử lý
         }
     } catch (e) { /* noop */ }
+    return false; // Không redirect
 }
 
 function filterNavbarForPharmacist() {
@@ -446,6 +455,13 @@ function filterNavbarForPharmacist() {
             const navItem = a.closest('.nav-item');
             if (navItem) navItem.style.display = keep ? '' : 'none';
         });
+        
+        // Update prescriptions link to point to pharmacy prescriptions
+        const prescriptionsLink = document.getElementById('prescriptions-link');
+        if (prescriptionsLink) {
+            prescriptionsLink.href = '/pharmacy/prescriptions/';
+            prescriptionsLink.innerHTML = '<i class="fas fa-prescription-bottle"></i> Đơn thuốc (Dược sĩ)';
+        }
     } catch (e) { /* noop */ }
 }
 
@@ -464,16 +480,20 @@ function isAllowedDoctorPath(pathname) {
         const path = (pathname.endsWith('/') ? pathname : pathname + '/').toLowerCase();
         return path.startsWith('/doctor/') || 
                path.startsWith('/patients/') || 
-               path.startsWith('/appointments/') ||
-               path.startsWith('/prescriptions/');
+               path.startsWith('/appointments/');
+               // Bỏ /prescriptions/ để tránh conflict với pharmacist
     } catch (e) { return false; }
 }
 
 function enforceDoctorRouteGuard() {
     try {
+        // Nếu đã là Pharmacist thì không áp dụng Doctor guard
+        if (isPharmacistUser()) return;
+        
         if (!isAuthenticated || !isDoctorUser()) return;
         const url = new URL(window.location.href);
         if (!isAllowedDoctorPath(url.pathname)) {
+            console.log('Doctor redirect: từ', url.pathname, 'đến /doctor/prescriptions/');
             window.location.replace('/doctor/prescriptions/');
         }
     } catch (e) { /* noop */ }
