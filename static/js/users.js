@@ -81,6 +81,37 @@ function setupEventListeners() {
         currentPage = 1;
         loadUsers();
     });
+    
+    // Realtime search
+    let searchTimeout;
+    const searchInput = document.getElementById('search-query');
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                currentPage = 1;
+                loadUsers();
+            }, 500);
+        });
+    }
+    
+    // Realtime filter cho dropdowns
+    const userTypeFilter = document.getElementById('user-type-filter');
+    const statusFilter = document.getElementById('status-filter');
+    
+    if (userTypeFilter) {
+        userTypeFilter.addEventListener('change', function() {
+            currentPage = 1;
+            loadUsers();
+        });
+    }
+    
+    if (statusFilter) {
+        statusFilter.addEventListener('change', function() {
+            currentPage = 1;
+            loadUsers();
+        });
+    }
 
     // Add user form
     document.getElementById('add-user-form').addEventListener('submit', handleAddUser);

@@ -283,7 +283,27 @@ class Prescription(models.Model):
     def save(self, *args, **kwargs):
         if not self.prescription_number:
             self.prescription_number = self.generate_prescription_number()
+        
+        is_new = self.pk is None
         super().save(*args, **kwargs)
+        
+        # Tạo PrescriptionDispensing record với status UNPAID cho đơn thuốc mới
+        if is_new and self.status == 'ACTIVE':
+            self.create_initial_dispensing_records()
+    
+    def create_initial_dispensing_records(self):
+        """Tạo các record dispensing ban đầu với status UNPAID"""
+        for item in self.items.all():
+            PrescriptionDispensing.objects.get_or_create(
+                prescription=self,
+                prescription_item=item,
+                defaults={
+                    'quantity_dispensed': 0,
+                    'status': 'UNPAID',
+                    'pharmacist': None,  # Sẽ được set khi có dược sĩ xử lý
+                    'notes': 'Chờ thanh toán'
+                }
+            )
     
     def generate_prescription_number(self):
         """Tạo số đơn thuốc: DT + YYYYMMDD + 6 số"""
@@ -338,6 +358,34 @@ class Prescription(models.Model):
         
         self.insurance_covered_amount = total_covered
         self.patient_payment_amount = total_patient
+    
+    def mark_as_paid(self):
+        """Đánh dấu đơn thuốc đã thanh toán - chuyển dispensing status từ UNPAID sang PENDING"""
+        self.dispensing_records.filter(status='UNPAID').update(
+            status='PENDING',
+            notes='Đã thanh toán, chờ cấp thuốc'
+        )
+    
+    def get_dispensing_status(self):
+        """Lấy trạng thái dispensing chung của đơn thuốc"""
+        dispensing_records = self.dispensing_records.all()
+        if not dispensing_records.exists():
+            return 'UNPAID'
+        
+        statuses = set(dispensing_records.values_list('status', flat=True))
+        
+        if 'UNPAID' in statuses:
+            return 'UNPAID'
+        elif all(status == 'DISPENSED' for status in statuses):
+            return 'DISPENSED'
+        elif 'PREPARED' in statuses:
+            return 'PREPARED'
+        elif 'PENDING' in statuses:
+            return 'PENDING'
+        elif 'CANCELLED' in statuses:
+            return 'CANCELLED'
+        else:
+            return 'PENDING'
 
 class PrescriptionItem(models.Model):
     """Chi tiết đơn thuốc - từng loại thuốc trong đơn"""
@@ -451,10 +499,10 @@ class PrescriptionDispensing(models.Model):
     """Lịch sử cấp thuốc"""
     
     STATUS_CHOICES = [
+        ('UNPAID', 'Chưa thanh toán'),
         ('PENDING', 'Chờ cấp thuốc'),
         ('PREPARED', 'Đã soạn thuốc'),
         ('DISPENSED', 'Đã cấp thuốc'),
-        ('RETURNED', 'Đã trả lại'),
         ('CANCELLED', 'Đã hủy'),
     ]
     
@@ -476,7 +524,7 @@ class PrescriptionDispensing(models.Model):
     )
     
     # Status and timing
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='UNPAID')
     dispensed_at = models.DateTimeField(auto_now_add=True)
     
     # Notes
@@ -521,6 +569,37 @@ class PrescriptionDispensing(models.Model):
                 prescription.status = 'PARTIALLY_DISPENSED'
             
             prescription.save()
+    
+    def mark_as_prepared(self, pharmacist=None, notes=''):
+        """Đánh dấu thuốc đã chuẩn bị"""
+        if self.status == 'PENDING':
+            self.status = 'PREPARED'
+            if pharmacist:
+                self.pharmacist = pharmacist
+            if notes:
+                self.notes = notes
+            self.save()
+            return True
+        return False
+    
+    def mark_as_dispensed(self, pharmacist=None, notes=''):
+        """Đánh dấu thuốc đã cấp phát"""
+        if self.status == 'PREPARED':
+            self.status = 'DISPENSED'
+            if pharmacist:
+                self.pharmacist = pharmacist
+            if notes:
+                self.notes = notes
+            self.save()
+            
+            # Cập nhật trạng thái prescription nếu tất cả items đã dispensed
+            all_dispensing = self.prescription.dispensing_records.all()
+            if all(d.status == 'DISPENSED' for d in all_dispensing):
+                self.prescription.status = 'FULLY_DISPENSED'
+                self.prescription.save()
+            
+            return True
+        return False
 
 class DrugInteraction(models.Model):
     """Tương tác thuốc"""

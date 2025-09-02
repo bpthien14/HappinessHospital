@@ -176,13 +176,35 @@ class PrescriptionViewSet(ModelViewSet):
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = [
         'prescription_number', 'patient__full_name', 'patient__patient_code', 'patient__phone_number',
-        'doctor__user__full_name'
+        'doctor__user__first_name', 'doctor__user__last_name'
     ]
     filterset_fields = [
         'status', 'prescription_type', 'patient', 'doctor', 'appointment'
     ]
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        
+        # Lọc theo dispensing_status nếu có
+        dispensing_status = self.request.query_params.get('dispensing_status')
+        if dispensing_status:
+            # Lọc dựa trên trạng thái của dispensing records
+            if dispensing_status == 'UNPAID':
+                queryset = queryset.filter(dispensing_records__status='UNPAID').distinct()
+            elif dispensing_status == 'PENDING':
+                queryset = queryset.filter(dispensing_records__status='PENDING').distinct()
+            elif dispensing_status == 'PREPARED':
+                queryset = queryset.filter(dispensing_records__status='PREPARED').distinct()
+            elif dispensing_status == 'DISPENSED':
+                queryset = queryset.filter(dispensing_records__status='DISPENSED').distinct()
+            elif dispensing_status == 'CANCELLED':
+                queryset = queryset.filter(dispensing_records__status='CANCELLED').distinct()
+        
+        return queryset
     ordering_fields = ['prescription_date', 'created_at', 'valid_until']
     ordering = ['-prescription_date']
+    
+    
     
     def get_permissions(self):
         if self.action in ['list', 'retrieve']:
@@ -437,6 +459,72 @@ class PrescriptionViewSet(ModelViewSet):
                     interactions.append(DrugInteractionSerializer(interaction).data)
         
         return Response({'interactions': interactions})
+    
+    @extend_schema(
+        operation_id='prescription_mark_prepared',
+        summary='Mark prescription as prepared',
+        description='Mark prescription dispensing status as prepared',
+        responses={
+            200: PrescriptionSerializer,
+            400: OpenApiResponse(description='Cannot mark as prepared'),
+        }
+    )
+    @action(detail=True, methods=['post'])
+    def mark_prepared(self, request, pk=None):
+        """Đánh dấu đơn thuốc đã chuẩn bị"""
+        prescription = self.get_object()
+        
+        # Cập nhật tất cả dispensing records từ PENDING sang PREPARED
+        updated = prescription.dispensing_records.filter(status='PENDING').update(
+            status='PREPARED',
+            pharmacist=request.user,
+            notes='Đã chuẩn bị thuốc'
+        )
+        
+        if updated == 0:
+            return Response(
+                {'error': 'Không thể đánh dấu chuẩn bị. Đơn thuốc phải ở trạng thái chờ cấp thuốc.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        serializer = self.get_serializer(prescription)
+        return Response(serializer.data)
+    
+    @extend_schema(
+        operation_id='prescription_mark_dispensed',
+        summary='Mark prescription as dispensed',
+        description='Mark prescription dispensing status as dispensed',
+        responses={
+            200: PrescriptionSerializer,
+            400: OpenApiResponse(description='Cannot mark as dispensed'),
+        }
+    )
+    @action(detail=True, methods=['post'])
+    def mark_dispensed(self, request, pk=None):
+        """Đánh dấu đơn thuốc đã cấp phát"""
+        prescription = self.get_object()
+        
+        # Cập nhật tất cả dispensing records từ PREPARED sang DISPENSED
+        updated = prescription.dispensing_records.filter(status='PREPARED').update(
+            status='DISPENSED',
+            pharmacist=request.user,
+            notes='Đã cấp thuốc cho bệnh nhân'
+        )
+        
+        if updated == 0:
+            return Response(
+                {'error': 'Không thể đánh dấu đã cấp thuốc. Đơn thuốc phải ở trạng thái đã chuẩn bị.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Cập nhật prescription status nếu tất cả đã dispensed
+        all_dispensing = prescription.dispensing_records.all()
+        if all(d.status == 'DISPENSED' for d in all_dispensing):
+            prescription.status = 'FULLY_DISPENSED'
+            prescription.save()
+        
+        serializer = self.get_serializer(prescription)
+        return Response(serializer.data)
 
 @extend_schema(tags=['dispensing'])
 class PrescriptionDispenseViewSet(ModelViewSet):

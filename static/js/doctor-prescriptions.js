@@ -86,7 +86,6 @@ function isDoctorUser() {
     try {
         // First check if we have currentUser from main.js
         if (!currentUser) {
-            console.log('🔍 currentUser not available, checking localStorage...');
             // Try to get user data from localStorage
             const userData = localStorage.getItem('user_data');
             if (userData) {
@@ -147,30 +146,7 @@ function showDoctorAccessDenied() {
     }
 }
 
-// Debug function to test API access
-window.testDoctorAPI = async function() {
-    console.log('🧪 Testing API access...');
-    console.log('🔑 Token:', localStorage.getItem('access_token') ? 'Present' : 'Missing');
-    console.log('👤 Current user:', currentUser);
-    
-    try {
-        console.log('📋 Testing patients API...');
-        const patientsResp = await axios.get('/api/patients/');
-        console.log('✅ Patients API works:', patientsResp.data);
-        
-        console.log('💊 Testing prescriptions API...');
-        const prescriptionsResp = await axios.get('/api/prescriptions/');
-        console.log('✅ Prescriptions API works:', prescriptionsResp.data);
-        
-        console.log('🔬 Testing drugs API...');
-        const drugsResp = await axios.get('/api/drugs/');
-        console.log('✅ Drugs API works:', drugsResp.data);
-        
-    } catch (error) {
-        console.error('❌ API test failed:', error);
-        console.error('Error details:', error.response);
-    }
-};
+
 
 /**
  * Setup UI specifically for doctors
@@ -239,13 +215,22 @@ async function loadInitialData() {
 
 async function loadPatients() {
     try {
-        console.log('📋 Loading patients...');
         const response = await axios.get('/api/patients/');
-        patients = response.data.results || response.data;
+        patients = response.data.results || response.data || [];
+        
+
+        
+        // Ensure patients is an array
+        if (!Array.isArray(patients)) {
+            console.error('❌ Patients data is not an array:', patients);
+            patients = [];
+        }
+        
         populatePatientSelect();
         console.log(`✅ Loaded ${patients.length} patients`);
     } catch (error) {
         console.error('❌ Error loading patients:', error);
+        patients = []; // Reset to empty array on error
         showAlert('Không thể tải danh sách bệnh nhân', 'error');
         
         const patientSelect = document.getElementById('patient-select');
@@ -257,7 +242,7 @@ async function loadPatients() {
 
 async function loadDrugs() {
     try {
-        console.log('💊 Loading drugs...');
+
         const response = await axios.get('/api/drugs/');
         drugs = response.data.results || response.data;
         console.log(`✅ Loaded ${drugs.length} drugs`);
@@ -277,6 +262,13 @@ function populatePatientSelect() {
         return;
     }
     
+    // Check if patients array is defined
+    if (!patients || !Array.isArray(patients)) {
+        console.error('❌ Patients array is not defined or not an array:', patients);
+        patientSelect.innerHTML = '<option value="">Lỗi tải danh sách bệnh nhân</option>';
+        return;
+    }
+    
     console.log('🔄 Populating patient select with', patients.length, 'patients');
     
     patientSelect.innerHTML = '<option value="">Chọn bệnh nhân</option>';
@@ -289,7 +281,9 @@ function populatePatientSelect() {
     patients.forEach(patient => {
         const option = document.createElement('option');
         option.value = patient.id;
-        option.textContent = `${patient.full_name} - ${patient.citizen_id}`;
+        // Use phone_number as primary identifier
+        const identifier = patient.phone_number || patient.citizen_id || patient.patient_code || 'N/A';
+        option.textContent = `${patient.full_name} - ${identifier}`;
         patientSelect.appendChild(option);
     });
     
@@ -324,9 +318,6 @@ function buildPrescriptionParams(){
     // Note: Doctor filtering is temporarily disabled due to API parameter mismatch
     // The API expects DoctorProfile ID but we only have User ID
     // For now, "My prescriptions only" will be handled in frontend filtering
-    if (myPrescriptionsOnly && currentUser) {
-        console.log('🔍 "My prescriptions only" filter enabled - will filter in frontend');
-    }
     
     return params;
 }
@@ -410,7 +401,7 @@ function renderPrescriptions(prescriptionsList) {
             return doctorName.toLowerCase().includes(currentUserName.toLowerCase());
         });
         
-        console.log(`🔍 Filtered prescriptions: ${filteredPrescriptions.length}/${prescriptionsList.length} (doctor: ${currentUserName})`);
+
     }
     
     if (filteredPrescriptions.length === 0) {
@@ -547,7 +538,6 @@ async function handleAddPrescription(event) {
         
         // Get prescription items
         const itemRows = document.querySelectorAll('.prescription-item-row');
-        console.log(`🔍 Found ${itemRows.length} prescription item rows`);
         
         itemRows.forEach((row, index) => {
             const drugSelect = row.querySelector('[name="drug"]');
@@ -558,14 +548,7 @@ async function handleAddPrescription(event) {
             const durationInput = row.querySelector('[name="duration"]');
             const instructionsInput = row.querySelector('[name="instructions"]');
             
-            console.log(`📋 Row ${index + 1}:`, {
-                drugSelect: drugSelect ? 'found' : 'missing',
-                quantityInput: quantityInput ? 'found' : 'missing',
-                drugValue: drugSelect?.value,
-                quantityValue: quantityInput?.value,
-                frequencyValue: frequencySelect?.value,
-                routeValue: routeSelect?.value
-            });
+
             
             const drug = drugSelect?.value;
             const quantity = quantityInput?.value;
@@ -638,13 +621,9 @@ async function handleAddPrescription(event) {
         let errorMessage = 'Lỗi tạo đơn thuốc: ';
         
         if (error.response?.data) {
-            console.log('🔍 Response data type:', typeof error.response.data);
-            console.log('🔍 Response data content:', error.response.data);
-            
             if (typeof error.response.data === 'object') {
                 const errors = [];
                 for (const [field, messages] of Object.entries(error.response.data)) {
-                    console.log(`🔍 Field error - ${field}:`, messages);
                     if (Array.isArray(messages)) {
                         errors.push(`${field}: ${messages.join(', ')}`);
                     } else if (typeof messages === 'object') {
@@ -670,7 +649,6 @@ async function handleAddPrescription(event) {
  * Show drug selection modal
  */
 function showDrugSelectionModal() {
-    console.log('💊 Opening drug selection modal...');
     
     // For now, just add a prescription item directly
     addPrescriptionItem();
@@ -772,15 +750,9 @@ async function viewPrescription(prescriptionId) {
         const response = await axios.get(url);
         const prescription = response.data;
         
-        console.log('📋 Full Prescription details:', prescription);
-        console.log('👤 Patient data:', prescription.patient);
-        console.log('👨‍⚕️ Doctor data:', prescription.doctor);
-        console.log('💊 Items data:', prescription.items);
+
         
         // Check if we have the nested data
-        if (prescription.items && prescription.items.length > 0) {
-            console.log('🔍 First item drug data:', prescription.items[0].drug);
-        }
         
         // Populate modal with prescription details
         const modalTitle = document.getElementById('viewPrescriptionModalLabel');
@@ -1432,9 +1404,7 @@ function generatePrintableHTML(prescription) {
  * Delete prescription
  */
 async function deletePrescription(prescriptionId) {
-    if (!confirm('Bạn có chắc chắn muốn xóa đơn thuốc này?')) {
-        return;
-    }
+    // Removed browser confirm - use UI modal if needed
     
     console.log('🗑️ Deleting prescription:', prescriptionId);
     

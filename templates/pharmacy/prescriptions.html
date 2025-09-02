@@ -17,39 +17,39 @@
 </style>
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2><i class="fas fa-prescription-bottle"></i> Đơn thuốc</h2>
-    <div>
-        <button class="btn btn-outline-primary" id="btn-refresh"><i class="fas fa-sync"></i> Làm mới</button>
-    </div>
+    <div></div>
 </div>
 
-<!-- Bộ lọc đơn thuốc -->
+<!-- Bộ lọc và tìm kiếm đơn thuốc -->
 <div class="card mb-4">
     <div class="card-body">
         <form id="filter-form" class="row g-3">
-            <div class="col-md-3">
-                <label class="form-label">Từ ngày</label>
-                <input type="date" class="form-control" id="date-from">
+            <div class="col-md-4">
+                <label for="search-input" class="form-label">Tìm kiếm</label>
+                <input type="text" class="form-control" id="search-input" 
+                       placeholder="Số đơn, tên BN, mã BN, SĐT, tên bác sĩ...">
             </div>
             <div class="col-md-3">
-                <label class="form-label">Đến ngày</label>
-                <input type="date" class="form-control" id="date-to">
-            </div>
-            <div class="col-md-3">
-                <label class="form-label">Trạng thái (cấp phát)</label>
+                <label class="form-label">Trạng thái</label>
                 <select id="status-filter" class="form-select">
                     <option value="">Tất cả</option>
+                    <option value="UNPAID">Chưa thanh toán</option>
                     <option value="PENDING">Chờ cấp thuốc</option>
-                    <option value="PREPARED">Đã soạn thuốc</option>
+                    <option value="PREPARED">Đã chuẩn bị</option>
                     <option value="DISPENSED">Đã cấp thuốc</option>
                     <option value="CANCELLED">Đã hủy</option>
                 </select>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label class="form-label">&nbsp;</label>
-                <button class="btn btn-outline-primary d-block" type="submit">
-                    <i class="fas fa-search"></i> Lọc
+                <button type="submit" class="btn btn-outline-primary d-block">
+                    <i class="fas fa-search"></i> Tìm kiếm
                 </button>
             </div>
+            <div class="col-md-4">
+                <!-- Khoảng trống để cân bằng layout -->
+            </div>
+
         </form>
     </div>
 </div>
@@ -190,7 +190,6 @@
                                             <th class="text-center" style="width: 16%">Liều dùng</th>
                                             <th class="text-center" style="width: 12%">Đơn giá</th>
                                             <th class="text-center" style="width: 12%">Thành tiền</th>
-                                            <th class="text-center" style="width: 8%">Thao tác</th>
                                         </tr>
                                     </thead>
                                     <tbody id="dp-items">
@@ -234,15 +233,18 @@
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                     <i class="fas fa-times me-2"></i>Đóng
                 </button>
-                <button type="button" class="btn btn-success" id="dp-dispense-btn" style="display: none;" onclick="handleDispensePrescription()">
-                    <i class="fas fa-pills me-2"></i>Cấp phát thuốc
+                <button type="button" class="btn btn-warning" id="dp-prepare-btn" style="display: none;">
+                    <i class="fas fa-clipboard-check me-2"></i>Đánh dấu đã chuẩn bị
+                </button>
+                <button type="button" class="btn btn-success" id="dp-dispense-btn" style="display: none;">
+                    <i class="fas fa-pills me-2"></i>Cấp thuốc cho bệnh nhân
                 </button>
             </div>
         </div>
     </div>
 </div>
 
-<script src="{% load static %}{% static 'js/prescriptions.js' %}?v=3"></script>
+<script src="{% load static %}{% static 'js/prescriptions.js' %}?v=4"></script>
 <script>
 // Enhanced modal functionality
 const originalOpenDispenseModal = window.openDispenseModal;
@@ -292,7 +294,10 @@ window.openDispenseModal = async function(id) {
         document.getElementById('dp-doctor').textContent = p.doctor?.user?.full_name || p.doctor_name || '-';
         
         const specialtyEl = document.getElementById('dp-specialty');
-        if (specialtyEl) specialtyEl.textContent = `Khoa: ${p.doctor?.department || '-'}`;
+        if (specialtyEl) {
+            const departmentName = p.doctor?.department || p.doctor_specialization || '-';
+            specialtyEl.textContent = `Khoa: ${departmentName}`;
+        }
         
         const dateEl = document.getElementById('dp-date');
         if (dateEl) dateEl.textContent = p.prescription_date ? new Date(p.prescription_date).toLocaleDateString('vi-VN') : '-';
@@ -338,11 +343,6 @@ window.openDispenseModal = async function(id) {
                     </td>
                     <td class="text-center">${formatCurrency(it.unit_price)}</td>
                     <td class="text-center fw-bold">${formatCurrency(it.total_price)}</td>
-                    <td class="text-center">
-                        <button class="btn btn-sm btn-outline-success" title="Cấp phát">
-                            <i class="fas fa-pills"></i>
-                        </button>
-                    </td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -350,21 +350,39 @@ window.openDispenseModal = async function(id) {
             tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">Không có thuốc nào</td></tr>';
         }
         
-                 // Show/hide dispense button based on new workflow
-         const dispenseBtn = document.getElementById('dp-dispense-btn');
-         if (dispenseBtn) {
-             if (p.status === 'PREPARED') {
-                 dispenseBtn.style.display = 'block';
-                 dispenseBtn.innerHTML = '<i class="fas fa-pills me-2"></i>Cấp thuốc cho bệnh nhân';
-                 dispenseBtn.title = 'Chuyển trạng thái sang Đã cấp thuốc';
-                 dispenseBtn.setAttribute('data-prescription-id', p.id);
-                 dispenseBtn.setAttribute('data-prescription-number', p.prescription_number);
-             } else {
-                 dispenseBtn.style.display = 'none';
-                 dispenseBtn.removeAttribute('data-prescription-id');
-                 dispenseBtn.removeAttribute('data-prescription-number');
-             }
-         }
+        // Show/hide buttons based on new dispensing workflow
+        const prepareBtn = document.getElementById('dp-prepare-btn');
+        const dispenseBtn = document.getElementById('dp-dispense-btn');
+        const dispensingStatus = p.dispensing_status || 'UNPAID';
+        const allowed = (typeof canDispense === 'function') ? canDispense() : true;
+        
+        // Prepare button - show when status is PENDING
+        if (prepareBtn) {
+            const canPrepare = dispensingStatus === 'PENDING' && allowed;
+            prepareBtn.style.display = canPrepare ? 'block' : 'none';
+            if (canPrepare) {
+                prepareBtn.onclick = () => handlePreparePrescription(p.id);
+                prepareBtn.setAttribute('data-prescription-id', p.id);
+                prepareBtn.setAttribute('data-prescription-number', p.prescription_number);
+            } else {
+                prepareBtn.removeAttribute('data-prescription-id');
+                prepareBtn.removeAttribute('data-prescription-number');
+            }
+        }
+        
+        // Dispense button - show when status is PREPARED
+        if (dispenseBtn) {
+            const canDispenseNow = dispensingStatus === 'PREPARED' && allowed;
+            dispenseBtn.style.display = canDispenseNow ? 'block' : 'none';
+            if (canDispenseNow) {
+                dispenseBtn.onclick = () => handleDispensePrescription(p.id);
+                dispenseBtn.setAttribute('data-prescription-id', p.id);
+                dispenseBtn.setAttribute('data-prescription-number', p.prescription_number);
+            } else {
+                dispenseBtn.removeAttribute('data-prescription-id');
+                dispenseBtn.removeAttribute('data-prescription-number');
+            }
+        }
         
         setDpLoading(false);
         document.getElementById('dp-content').classList.remove('d-none');
@@ -376,58 +394,36 @@ window.openDispenseModal = async function(id) {
     }
 };
 
-// Function to handle dispensing prescription
-async function handleDispensePrescription() {
-    const dispenseBtn = document.getElementById('dp-dispense-btn');
-    const prescriptionId = dispenseBtn?.getAttribute('data-prescription-id');
-    const prescriptionNumber = dispenseBtn?.getAttribute('data-prescription-number');
+// Function to handle preparing prescription
+async function handlePreparePrescription(prescriptionId) {
+    if (!confirm('Xác nhận đã chuẩn bị xong thuốc cho đơn này?')) return;
     
-    if (!prescriptionId) {
-        alert('Không tìm thấy ID đơn thuốc');
-        return;
-    }
-    
-    // Confirm action
-    if (!confirm(`Bạn có chắc chắn muốn cấp thuốc cho đơn ${prescriptionNumber}?\n\nHành động này sẽ chuyển trạng thái đơn thuốc sang "Đã cấp thuốc".`)) {
-        return;
+    const prepareBtn = document.getElementById('dp-prepare-btn');
+    if (prepareBtn) {
+        prepareBtn.disabled = true;
+        prepareBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Đang xử lý...';
     }
     
     try {
-        // Disable button and show loading
-        dispenseBtn.disabled = true;
-        dispenseBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Đang xử lý...';
-        
-        // Call API to update prescription status to DISPENSED
-        const response = await axios.patch(`/api/prescriptions/${prescriptionId}/`, {
-            status: 'DISPENSED'
-        });
+        const response = await axios.post(`/api/prescriptions/${prescriptionId}/mark_prepared/`);
         
         if (response.status === 200) {
-            // Success - close modal and refresh list
             const modal = bootstrap.Modal.getInstance(document.getElementById('dispenseModal'));
             if (modal) modal.hide();
             
-            // Show success message
             if (window.HospitalApp && window.HospitalApp.showAlert) {
-                HospitalApp.showAlert(`Đã cấp thuốc thành công cho đơn ${prescriptionNumber}!`, 'success');
+                HospitalApp.showAlert('Đã đánh dấu thuốc đã chuẩn bị!', 'success');
             } else {
-                alert(`Đã cấp thuốc thành công cho đơn ${prescriptionNumber}!`);
+                alert('Đã đánh dấu thuốc đã chuẩn bị!');
             }
             
-            // Refresh prescriptions list
             if (typeof loadPrescriptions === 'function') {
                 loadPrescriptions();
             }
         }
-        
     } catch (error) {
-        console.error('Error dispensing prescription:', error);
-        
-        // Show error message
-        const errorMessage = error.response?.data?.error || 
-                           error.response?.data?.message || 
-                           error.response?.data?.detail ||
-                           'Có lỗi xảy ra khi cấp thuốc';
+        console.error('Error preparing prescription:', error);
+        const errorMessage = error.response?.data?.error || 'Có lỗi xảy ra khi chuẩn bị thuốc';
         
         if (window.HospitalApp && window.HospitalApp.showAlert) {
             HospitalApp.showAlert(`Lỗi: ${errorMessage}`, 'danger');
@@ -435,12 +431,116 @@ async function handleDispensePrescription() {
             alert(`Lỗi: ${errorMessage}`);
         }
         
-        // Re-enable button
-        dispenseBtn.disabled = false;
-        dispenseBtn.innerHTML = '<i class="fas fa-pills me-2"></i>Cấp thuốc cho bệnh nhân';
+        if (prepareBtn) {
+            prepareBtn.disabled = false;
+            prepareBtn.innerHTML = '<i class="fas fa-clipboard-check me-2"></i>Đánh dấu đã chuẩn bị';
+        }
+    }
+}
+
+// Function to handle dispensing prescription
+async function handleDispensePrescription(prescriptionId) {
+    // Removed browser confirm - use UI modal if needed
+    
+    const dispenseBtn = document.getElementById('dp-dispense-btn');
+    if (dispenseBtn) {
+        dispenseBtn.disabled = true;
+        dispenseBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Đang xử lý...';
+    }
+    
+    try {
+        const response = await axios.post(`/api/prescriptions/${prescriptionId}/mark_dispensed/`);
+        
+        if (response.status === 200) {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('dispenseModal'));
+            if (modal) modal.hide();
+            
+            if (window.HospitalApp && window.HospitalApp.showAlert) {
+                HospitalApp.showAlert('Đã cấp thuốc thành công!', 'success');
+            } else {
+                alert('Đã cấp thuốc thành công!');
+            }
+            
+            if (typeof loadPrescriptions === 'function') {
+                loadPrescriptions();
+            }
+        }
+    } catch (error) {
+        console.error('Error dispensing prescription:', error);
+        const errorMessage = error.response?.data?.error || 'Có lỗi xảy ra khi cấp thuốc';
+        
+        if (window.HospitalApp && window.HospitalApp.showAlert) {
+            HospitalApp.showAlert(`Lỗi: ${errorMessage}`, 'danger');
+        } else {
+            alert(`Lỗi: ${errorMessage}`);
+        }
+        
+        if (dispenseBtn) {
+            dispenseBtn.disabled = false;
+            dispenseBtn.innerHTML = '<i class="fas fa-pills me-2"></i>Cấp thuốc cho bệnh nhân';
+        }
     }
 }
 </script>
+
+<!-- Modal xác nhận chuẩn bị thuốc -->
+<div class="modal fade" id="confirmPrepareModal" tabindex="-1" aria-labelledby="confirmPrepareModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="confirmPrepareModalLabel">
+                    <i class="fas fa-clipboard-check text-warning me-2"></i>Xác nhận chuẩn bị thuốc
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Xác nhận:</strong> Bạn đã chuẩn bị xong thuốc cho đơn này?
+                </div>
+                <p class="mb-0">Sau khi xác nhận, trạng thái đơn sẽ chuyển thành <strong>"Đã chuẩn bị"</strong> và bệnh nhân có thể đến lấy thuốc.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Hủy
+                </button>
+                <button type="button" class="btn btn-warning" id="confirmPrepareBtn">
+                    <i class="fas fa-clipboard-check me-2"></i>Xác nhận chuẩn bị
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal xác nhận cấp thuốc -->
+<div class="modal fade" id="confirmDispenseModal" tabindex="-1" aria-labelledby="confirmDispenseModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="confirmDispenseModalLabel">
+                    <i class="fas fa-hand-holding-medical text-success me-2"></i>Xác nhận cấp thuốc
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle me-2"></i>
+                    <strong>Xác nhận:</strong> Bạn đã cấp thuốc cho bệnh nhân?
+                </div>
+                <p class="mb-0">Sau khi xác nhận, đơn thuốc sẽ được đánh dấu là <strong>"Đã cấp thuốc"</strong> và hoàn thành quy trình.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Hủy
+                </button>
+                <button type="button" class="btn btn-success" id="confirmDispenseBtn">
+                    <i class="fas fa-hand-holding-medical me-2"></i>Xác nhận cấp thuốc
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 

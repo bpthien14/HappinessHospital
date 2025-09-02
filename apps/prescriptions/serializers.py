@@ -18,7 +18,11 @@ class SimplePatientSerializer(serializers.Serializer):
     citizen_id = serializers.CharField()
     phone_number = serializers.CharField()
     date_of_birth = serializers.DateField()
+    gender = serializers.CharField()
     address = serializers.CharField()
+    ward = serializers.CharField()
+    province = serializers.CharField()
+    full_address = serializers.ReadOnlyField()
     patient_code = serializers.CharField()
 
 class SimpleDoctorSerializer(serializers.Serializer):
@@ -140,6 +144,8 @@ class PrescriptionSerializer(serializers.ModelSerializer):
     days_until_expiry = serializers.ReadOnlyField()
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     prescription_type_display = serializers.CharField(source='get_prescription_type_display', read_only=True)
+    dispensing_status = serializers.SerializerMethodField()
+    dispensing_status_display = serializers.SerializerMethodField()
     
     # Include prescription items
     items = PrescriptionItemSerializer(many=True, read_only=True)
@@ -155,7 +161,8 @@ class PrescriptionSerializer(serializers.ModelSerializer):
             # Nested objects
             'patient', 'doctor', 'appointment',
             'prescription_date', 'prescription_type', 'prescription_type_display',
-            'status', 'status_display', 'diagnosis', 'notes', 'special_instructions',
+            'status', 'status_display', 'dispensing_status', 'dispensing_status_display',
+            'diagnosis', 'notes', 'special_instructions',
             'valid_from', 'valid_until', 'is_valid', 'days_until_expiry',
             'total_amount', 'insurance_covered_amount', 'patient_payment_amount',
             'items', 'items_count', 'created_by', 'created_by_name',
@@ -191,8 +198,8 @@ class PrescriptionSerializer(serializers.ModelSerializer):
     def get_doctor(self, obj):
         """Return full doctor information"""
         if obj.doctor:
-            user = obj.doctor.user if getattr(obj.doctor, 'user', None) else None
-            department = getattr(obj.doctor, 'department', None)
+            user = obj.doctor.user if hasattr(obj.doctor, 'user') else None
+            department = obj.doctor.department if hasattr(obj.doctor, 'department') else None
             return {
                 'id': str(obj.doctor.id),
                 'user': {
@@ -200,13 +207,35 @@ class PrescriptionSerializer(serializers.ModelSerializer):
                     'full_name': user.full_name,
                     'email': user.email,
                 } if user else None,
-                'employee_id': getattr(user, 'employee_id', None),
-                'department': getattr(department, 'name', None),
-                'department_id': str(getattr(department, 'id')) if getattr(department, 'id', None) else None,
+                'employee_id': getattr(user, 'employee_id', None) if user else None,
+                'department': department.name if department else None,
+                'department_id': str(department.id) if department else None,
                 'specialization': obj.doctor.specialization,
                 'license_number': obj.doctor.license_number,
             }
         return None
+    
+    def get_dispensing_status(self, obj):
+        """Lấy trạng thái dispensing tổng hợp"""
+        return obj.get_dispensing_status()
+    
+    def get_dispensing_status_display(self, obj):
+        """Hiển thị tên trạng thái dispensing"""
+        status = obj.get_dispensing_status()
+        status_map = {
+            'UNPAID': 'Chưa thanh toán',
+            'PENDING': 'Chờ cấp thuốc',
+            'PREPARED': 'Đã chuẩn bị',
+            'DISPENSED': 'Đã cấp thuốc',
+            'CANCELLED': 'Đã hủy',
+        }
+        return status_map.get(status, status)
+
+
+class PrescriptionUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Prescription
+        fields = []
 
 class PrescriptionCreateSerializer(serializers.ModelSerializer):
     items = PrescriptionItemSerializer(many=True, write_only=True)
@@ -358,7 +387,12 @@ class PrescriptionDispenseCreateSerializer(serializers.ModelSerializer):
         drug = dispense_record.prescription_item.drug
         drug.current_stock -= dispense_record.quantity_dispensed
         drug.save()
-        
+        # If all items fully dispensed, mark prescription FULLY_DISPENSED (UI will map states)
+        prescription = dispense_record.prescription_item.prescription
+        all_items = list(prescription.items.all())
+        if all_items and all(item.is_fully_dispensed for item in all_items):
+            prescription.status = 'FULLY_DISPENSED'
+            prescription.save()
         return dispense_record
 
 class DrugInteractionSerializer(serializers.ModelSerializer):

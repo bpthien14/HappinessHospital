@@ -468,7 +468,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Function to initialize interface based on role
     function initializeInterface() {
-        console.log('🔍 Checking currentUser:', window.currentUser);
         
         // Check user role and show appropriate interface
         if (isDoctorUser()) {
@@ -505,9 +504,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     function waitForCurrentUser() {
         waitAttempts++;
-        console.log(`⏳ Waiting for currentUser... (attempt ${waitAttempts}/${maxAttempts})`);
-        console.log('🔍 window.currentUser:', window.currentUser);
-        console.log('🔍 localStorage user_data:', localStorage.getItem('user_data'));
         
         if (window.currentUser) {
             console.log('✅ currentUser is available, initializing interface');

@@ -126,6 +126,37 @@ function setupEventListeners() {
         loadPatients();
     });
     
+    // Realtime search
+    let searchTimeout;
+    const searchInput = document.getElementById('search-query');
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                currentPage = 1;
+                loadPatients();
+            }, 500);
+        });
+    }
+    
+    // Realtime filter cho dropdowns
+    const genderFilter = document.getElementById('gender-filter');
+    const insuranceFilter = document.getElementById('insurance-filter');
+    
+    if (genderFilter) {
+        genderFilter.addEventListener('change', function() {
+            currentPage = 1;
+            loadPatients();
+        });
+    }
+    
+    if (insuranceFilter) {
+        insuranceFilter.addEventListener('change', function() {
+            currentPage = 1;
+            loadPatients();
+        });
+    }
+    
     // Add patient form
     document.getElementById('add-patient-form').addEventListener('submit', handleAddPatient);
     
