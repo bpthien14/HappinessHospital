@@ -14,7 +14,9 @@ class VNPayService:
         self.vnp_TmnCode = getattr(settings, 'VNPAY_TMN_CODE', None) or 'DEMOV210'
         self.vnp_HashSecret = getattr(settings, 'VNPAY_HASH_SECRET', None) or 'DEMOHASHSECRET'
         self.vnp_Url = "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html"
-        self.vnp_QR_Url = "https://sandbox.vnpayment.vn/paymentv2/qr"  # QR endpoint
+        # Sử dụng trang vpcpay để hiển thị QR (đúng trải nghiệm thanh toán của VNPAY)
+        # Thay vì gọi trực tiếp endpoint /paymentv2/qr
+        self.vnp_QR_Url = self.vnp_Url
         self.vnp_ReturnUrl = getattr(settings, 'VNPAY_RETURN_URL', None) or 'http://localhost:8000/api/payments/vnpay_return/'
         # IPN URL không phải là tham số bắt buộc gửi lên VNPAY; hệ thống VNPAY sẽ dùng cấu hình tại merchant portal
         self.vnp_IpnUrl = getattr(settings, 'VNPAY_IPN_URL', None)
@@ -145,7 +147,7 @@ class VNPayService:
         vnp_Params.append(('vnp_SecureHashType', 'HmacSHA512'))
         vnp_Params.append(('vnp_SecureHash', secureHash))
         
-        # Create QR Code URL
+        # Create QR Code URL trên trang vpcpay (VNPAY sẽ hiển thị QR theo tham số vnp_QRCode)
         qr_url = f"{self.vnp_QR_Url}?{urllib.parse.urlencode(vnp_Params)}"
         
         return qr_url, vnp_TxnRef

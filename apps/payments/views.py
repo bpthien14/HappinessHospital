@@ -30,7 +30,7 @@ class PaymentViewSet(ModelViewSet):
             from rest_framework.permissions import AllowAny
             self.permission_classes = [AllowAny]
             return [AllowAny()]
-        elif self.action in ['create', 'vnpay_create', 'vnpay_qr_create', 'cash_confirm']:
+        elif self.action in ['create', 'vnpay_create', 'cash_confirm']:
             # Allow patients to create payments for their prescriptions
             from rest_framework.permissions import AllowAny
             self.permission_classes = [AllowAny]
@@ -42,7 +42,7 @@ class PaymentViewSet(ModelViewSet):
     def get_serializer_class(self):
         if self.action == 'create':
             return PaymentCreateSerializer
-        elif self.action in ['vnpay_create', 'vnpay_qr_create']:
+        elif self.action in ['vnpay_create']:
             return VNPayCreateSerializer
         return PaymentSerializer
 
@@ -52,7 +52,11 @@ class PaymentViewSet(ModelViewSet):
     @extend_schema(
         operation_id='payment_vnpay_create',
         summary='Tạo giao dịch VNPAY (redirect)',
-        responses={201: PaymentSerializer, 400: OpenApiResponse(description='Không hợp lệ')}
+        description='Tạo giao dịch VNPAY và trả về URL redirect để chuyển người dùng tới trang thanh toán.',
+        responses={
+            201: OpenApiResponse(description='{"payment_id":"UUID","vnp_TxnRef":"string","redirect_url":"url"}'),
+            400: OpenApiResponse(description='Không hợp lệ')
+        }
     )
     @action(detail=False, methods=['post'])
     def vnpay_create(self, request):
@@ -120,85 +124,9 @@ class PaymentViewSet(ModelViewSet):
         )
         
         return Response({
-            'payment': PaymentSerializer(payment).data,
-            'payment_url': payment_url,
+            'payment_id': str(payment.id),
+            'vnp_TxnRef': vnp_TxnRef,
             'redirect_url': payment_url
-        }, status=status.HTTP_201_CREATED)
-
-    @extend_schema(
-        operation_id='payment_vnpay_qr_create',
-        summary='Tạo giao dịch VNPAY với QR Code',
-        responses={201: PaymentSerializer, 400: OpenApiResponse(description='Không hợp lệ')}
-    )
-    @action(detail=False, methods=['post'])
-    def vnpay_qr_create(self, request):
-        """Tạo giao dịch thanh toán VNPAY với QR Code"""
-        serializer = VNPayCreateSerializer(data=request.data, context={'request': request})
-        serializer.is_valid(raise_exception=True)
-        
-        prescription = serializer.validated_data['prescription']
-        order_desc = serializer.validated_data['order_desc']
-        amount = serializer.validated_data['amount']
-        
-        # Check if there's already a payment for this prescription
-        existing_paid = Payment.objects.filter(
-            prescription=prescription,
-            status='PAID'
-        ).exists()
-        
-        if existing_paid:
-            return Response(
-                {'error': 'Đơn thuốc đã được thanh toán'}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        # Check if there's already a pending QR payment for this prescription
-        existing_payment = Payment.objects.filter(
-            prescription=prescription,
-            status='PENDING',
-            method='VNPAY'
-        ).first()
-        
-        if existing_payment:
-            # Use existing payment instead of creating new one
-            payment = existing_payment
-        else:
-            # Create new payment record
-            payment = Payment.objects.create(
-                prescription=prescription,
-                method='VNPAY',
-                amount=amount,
-                created_by=request.user
-            )
-        
-        # Generate VNPAY QR Code
-        vnpay_service = VNPayService()
-        client_ip = request.META.get('HTTP_X_FORWARDED_FOR') or request.META.get('REMOTE_ADDR', '127.0.0.1')
-        qr_url, vnp_TxnRef = vnpay_service.create_qr_code(payment, order_desc, client_ip=client_ip)
-        
-        # Update payment with VNPAY reference and QR code
-        payment.vnp_TxnRef = vnp_TxnRef
-        payment.vnp_Amount = int(amount * 100)
-        payment.vnp_OrderInfo = order_desc
-        payment.qr_code_url = qr_url
-        payment.qr_code_type = 'VNPAY_QR'
-        payment.save()
-        
-        # Create VNPayTransaction record
-        VNPayTransaction.objects.create(
-            payment=payment,
-            vnp_TxnRef=vnp_TxnRef,
-            vnp_Amount=int(amount * 100),
-            vnp_OrderInfo=order_desc,
-            vnp_CreateDate=vnpay_service.get_current_timestamp(),
-            vnp_IpAddr=request.META.get('REMOTE_ADDR', '127.0.0.1')
-        )
-        
-        return Response({
-            'payment': PaymentSerializer(payment).data,
-            'qr_code_url': qr_url,
-            'qr_code_type': 'VNPAY_QR',
-            'payment_id': str(payment.id)
         }, status=status.HTTP_201_CREATED)
 
     @extend_schema(
