@@ -108,7 +108,6 @@ class PaymentViewSet(ModelViewSet):
         payment.vnp_TxnRef = vnp_TxnRef
         payment.vnp_Amount = int(amount * 100)
         payment.vnp_OrderInfo = order_desc
-        payment.qr_code_type = 'VNPAY_REDIRECT'
         payment.save()
         
         # Create or get VNPayTransaction record (avoid duplicate)

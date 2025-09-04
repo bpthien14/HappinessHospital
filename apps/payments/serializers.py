@@ -38,21 +38,20 @@ class PaymentSerializer(serializers.ModelSerializer):
     prescription_number = serializers.CharField(source='prescription.prescription_number', read_only=True)
     created_by_name = serializers.CharField(source='created_by.full_name', read_only=True)
     vnpay_payment_url = serializers.SerializerMethodField()
-    qr_code_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Payment
         fields = [
             'id', 'prescription', 'prescription_number', 'method', 'amount', 'currency',
-            'status', 'vnpay_payment_url', 'qr_code_url',
+            'status', 'vnpay_payment_url',
             'vnp_TxnRef', 'vnp_Amount', 'vnp_OrderInfo', 'vnp_ResponseCode',
-            'vnp_TransactionNo', 'vnp_BankCode', 'vnp_PayDate', 'qr_code_type',
+            'vnp_TransactionNo', 'vnp_BankCode', 'vnp_PayDate',
             'created_by', 'created_by_name', 'created_at', 'updated_at'
         ]
         read_only_fields = [
             'id', 'status', 'created_by', 'created_by_name', 'created_at', 'updated_at',
-            'vnpay_payment_url', 'qr_code_url', 'vnp_ResponseCode', 'vnp_TransactionNo', 
-            'vnp_BankCode', 'vnp_PayDate', 'qr_code_type'
+            'vnpay_payment_url', 'vnp_ResponseCode', 'vnp_TransactionNo', 
+            'vnp_BankCode', 'vnp_PayDate'
         ]
 
     def get_vnpay_payment_url(self, obj):
@@ -61,11 +60,6 @@ class PaymentSerializer(serializers.ModelSerializer):
             return obj.get_vnpay_payment_url()
         return None
 
-    def get_qr_code_url(self, obj):
-        """Get QR code URL if method is VNPAY"""
-        if obj.method == 'VNPAY' and obj.status == 'PENDING':
-            return obj.get_qr_code_url()
-        return None
 
 
 class PaymentCreateSerializer(serializers.ModelSerializer):

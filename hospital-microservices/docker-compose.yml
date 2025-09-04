@@ -15,7 +15,6 @@ services:
       - appointments-service
       - prescriptions-service
       - payments-service
-      - notifications-service
     networks:
       - hospital-network
     healthcheck:
@@ -175,28 +174,6 @@ services:
       timeout: 10s
       retries: 3
 
-  # Notifications Service
-  notifications-service:
-    build: ./notifications-service
-    ports:
-      - "8006:8006"
-    environment:
-      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
-      - AUTH_SERVICE_URL=http://auth-service:8001
-      - SERVICE_NAME=notifications
-      - DEBUG=True
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-      auth-service:
-        condition: service_healthy
-    networks:
-      - hospital-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8006/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
 
   # Databases - Using Local PostgreSQL (commented out)
   # auth-db:

@@ -22,6 +22,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'drf_spectacular',
+    'payments',
 ]
 
 MIDDLEWARE = [
@@ -57,11 +58,8 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'hospital_payments',
-        'USER': 'fe-phuocthien',
-        'HOST': 'host.docker.internal',
-        'PORT': '5432',
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
 

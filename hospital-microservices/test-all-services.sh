@@ -54,7 +54,6 @@ test_service_health "Patients Service" "8002" "/health/"
 test_service_health "Appointments Service" "8003" "/health/"
 test_service_health "Prescriptions Service" "8004" "/health/"
 test_service_health "Payments Service" "8005" "/health/"
-test_service_health "Notifications Service" "8006" "/health/"
 
 # Test Nginx gateway health
 echo -e "\n${BLUE}2. Testing Nginx Gateway Health${NC}"
@@ -105,12 +104,6 @@ else
     echo -e "${RED}❌ Service not accessible${NC}"
 fi
 
-echo -e "\n${YELLOW}🔔 Notifications Service${NC}"
-if curl -s http://localhost/api/notifications/ | grep -q "Not Found\|error\|count"; then
-    echo -e "${YELLOW}⚠️  Service accessible but not fully implemented${NC}"
-else
-    echo -e "${RED}❌ Service not accessible${NC}"
-fi
 
 # Test Swagger documentation
 echo -e "\n${BLUE}4. Testing API Documentation${NC}"
@@ -154,7 +147,6 @@ echo "  - Patients Service: http://localhost/api/patients/"
 echo "  - Appointments Service: http://localhost/api/appointments/"
 echo "  - Prescriptions Service: http://localhost/api/prescriptions/"
 echo "  - Payments Service: http://localhost/api/payments/"
-echo "  - Notifications Service: http://localhost/api/notifications/"
 echo "  - Swagger UI: http://localhost/api/docs/"
 echo "  - API Schema: http://localhost/api/schema/"
 echo ""
