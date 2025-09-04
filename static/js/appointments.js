@@ -5,22 +5,18 @@
 
 let currentPage = 1;
 let totalPages = 1;
+let allAppointments = [];
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('📅 Appointments page: DOM loaded');
-    
     // Đợi axios interceptors sẵn sàng
     if (window.HospitalApp && window.HospitalApp.interceptorsReady) {
-        console.log('📅 Axios interceptors ready, initializing appointments');
         initializeAppointments();
     } else {
-        console.log('📅 Waiting for axios interceptors...');
         // Đợi event từ main.js
         window.addEventListener('axiosInterceptorsReady', initializeAppointments);
         // Fallback: đợi tối đa 2 giây
         setTimeout(() => {
             if (window.HospitalApp && window.HospitalApp.interceptorsReady) {
-                console.log('📅 Axios interceptors ready after timeout, initializing appointments');
                 initializeAppointments();
             } else {
                 console.error('❌ Axios interceptors not ready after timeout');
@@ -31,12 +27,10 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function initializeAppointments() {
-    console.log('📅 Initializing appointments management');
     if (checkAuth()) {
         loadAppointments();
         loadFormData();
         setupEventListeners();
-        console.log('📅 Appointments management initialized successfully');
     }
 }
 
@@ -83,6 +77,12 @@ function setupEventListeners() {
     const editForm = document.getElementById('edit-appointment-form');
     if (editForm) {
         editForm.addEventListener('submit', handleUpdateAppointment);
+        // Track changes to enable/disable save button
+        ['edit-appointment-date','edit-appointment-time','edit-priority','edit-chief-complaint','edit-notes']
+            .forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.addEventListener('input', updateEditSaveState);
+            });
     }
 
     // Filter inputs
@@ -108,11 +108,18 @@ function setupEventListeners() {
             }
         }
     });
+
+    // My appointments only toggle
+    const myOnly = document.getElementById('my-appointments-only');
+    if (myOnly) {
+        myOnly.addEventListener('change', function() {
+            currentPage = 1;
+            loadAppointments();
+        });
+    }
 }
 
 async function loadAppointments(page = 1) {
-    console.log('📅 Loading appointments, page:', page);
-    
     try {
         // Lấy filters từ form
         const searchQuery = document.getElementById('search-query')?.value || '';
@@ -120,6 +127,7 @@ async function loadAppointments(page = 1) {
         const priority = document.getElementById('priority-filter')?.value || '';
         const department = document.getElementById('department-filter')?.value || '';
         const date = document.getElementById('date-filter')?.value || '';
+        const myOnlyChecked = document.getElementById('my-appointments-only')?.checked || false;
 
         // Build URL với params
         const params = new URLSearchParams({
@@ -133,25 +141,51 @@ async function loadAppointments(page = 1) {
         if (department) params.append('department', department);
         if (date) params.append('appointment_date', date);
 
+        // Thêm filter doctor nếu checkbox bật và có doctor_profile_id
+        let appliedApiDoctorFilter = false;
+        if (myOnlyChecked) {
+            try {
+                const userData = JSON.parse(localStorage.getItem('user_data') || '{}');
+                const doctorProfileId = userData?.doctor_profile_id || userData?.doctor?.id;
+                if (doctorProfileId) {
+                    params.append('doctor', doctorProfileId);
+                    appliedApiDoctorFilter = true;
+                }
+            } catch (e) { /* noop */ }
+        }
+
         const url = `/api/appointments/?${params.toString()}`;
-        console.log('📅 API URL:', url);
 
         const response = await axios.get(url);
-        console.log('📅 API response:', response.data);
 
         const data = response.data;
         if (data.results || Array.isArray(data)) {
             currentPage = page;
             const items = data.results || data;
-            const count = data.count || items.length || 0;
-            const pageSize = items.length || 1; // kích thước trang thực tế
-            totalPages = Math.max(1, Math.ceil(count / pageSize));
-            
-            renderAppointments(items);
-            updatePagination({ count, pageSize });
-            updateTotalCount(count);
-            
-            console.log(`📅 Loaded ${items.length} appointments (pageSize=${pageSize}, count=${count}, totalPages=${totalPages})`);
+            allAppointments = Array.isArray(items) ? items : [];
+
+            // Frontend filter theo bác sĩ nếu không áp dụng được filter qua API
+            let visibleAppointments = allAppointments;
+            if (myOnlyChecked && !appliedApiDoctorFilter) {
+                try {
+                    const userData = JSON.parse(localStorage.getItem('user_data') || '{}');
+                    const currentDoctorName = userData?.full_name || userData?.username || '';
+                    if (currentDoctorName) {
+                        visibleAppointments = allAppointments.filter(a =>
+                            String(a.doctor_name || '').toLowerCase().includes(String(currentDoctorName).toLowerCase())
+                        );
+                    }
+                } catch (e) { /* noop */ }
+            }
+
+            const totalCount = appliedApiDoctorFilter ? (data.count || visibleAppointments.length || 0)
+                                                     : (myOnlyChecked ? visibleAppointments.length : (data.count || visibleAppointments.length || 0));
+            const pageSize = visibleAppointments.length || 1;
+            totalPages = Math.max(1, Math.ceil((data.count || pageSize) / (pageSize || 1)));
+
+            renderAppointments(visibleAppointments);
+            updatePagination({ count: totalCount, pageSize });
+            updateTotalCount(totalCount);
         } else {
             console.error('❌ Invalid response format:', data);
             showAlert('Lỗi định dạng dữ liệu', 'danger');
@@ -160,7 +194,6 @@ async function loadAppointments(page = 1) {
     } catch (error) {
         console.error('❌ Error loading appointments:', error);
         if (error.response?.status === 401) {
-            console.log('🔒 Authentication required, redirecting to login');
             window.location.href = '/auth/login/';
             return;
         }
@@ -376,40 +409,32 @@ function getActionButtons(appointment) {
     let buttons = '';
     const isReception = (window.currentUser && window.currentUser.user_type === 'RECEPTION') ||
                         (window.HospitalApp && HospitalApp.isAuthenticated && JSON.parse(localStorage.getItem('user_data') || '{}').user_type === 'RECEPTION');
+    const isDoctor = (JSON.parse(localStorage.getItem('user_data') || '{}').user_type === 'DOCTOR');
     
     const parts = [];
     // View
     parts.push(`<button class="btn btn-sm btn-outline-info me-1" onclick="viewAppointment('${appointment.id}')" title="Xem chi tiết"><i class="fas fa-eye"></i></button>`);
-    // Edit
-    if ([ 'SCHEDULED', 'CONFIRMED' ].includes(appointment.status)) {
+    // Edit (reception only)
+    if ([ 'SCHEDULED', 'CONFIRMED' ].includes(appointment.status) && isReception) {
         parts.push(`<button class="btn btn-sm btn-outline-warning me-1" onclick="editAppointment('${appointment.id}')" title="Chỉnh sửa"><i class="fas fa-edit"></i></button>`);
     }
-    // Confirm (non-reception)
-    if (appointment.status === 'SCHEDULED' && !isReception) {
+    // Confirm (doctors only)
+    if (appointment.status === 'SCHEDULED' && isDoctor) {
         parts.push(`<button class="btn btn-sm btn-outline-success me-1" onclick="confirmAppointment('${appointment.id}')" title="Xác nhận"><i class="fas fa-check"></i></button>`);
     }
-    // Check-in
-    if (appointment.status === 'CONFIRMED') {
+    // Check-in (reception only)
+    if (appointment.status === 'CONFIRMED' && isReception) {
         parts.push(`<button class="btn btn-sm btn-outline-primary me-1" onclick="checkinAppointment('${appointment.id}')" title="Check-in"><i class="fas fa-sign-in-alt"></i></button>`);
     }
-    // Start exam
-    if (appointment.status === 'CHECKED_IN') {
+    // Start exam (doctors only)
+    if (appointment.status === 'CHECKED_IN' && isDoctor) {
         parts.push(`<button class="btn btn-sm btn-outline-info me-1" onclick="startExamination('${appointment.id}')" title="Bắt đầu khám"><i class="fas fa-play"></i></button>`);
     }
-    // Complete
-    if (appointment.status === 'IN_PROGRESS') {
+    // Complete (doctors only)
+    if (appointment.status === 'IN_PROGRESS' && isDoctor) {
         parts.push(`<button class="btn btn-sm btn-outline-success me-1" onclick="completeAppointment('${appointment.id}')" title="Hoàn thành"><i class="fas fa-check-circle"></i></button>`);
     }
-    // Reschedule
-    if (isReception) {
-        if (appointment.status === 'SCHEDULED') {
-            parts.push(`<button class="btn btn-sm btn-outline-secondary me-1" onclick="rescheduleAppointment('${appointment.id}')" title="Dời lịch"><i class="fas fa-calendar-alt"></i></button>`);
-        }
-    } else {
-        if ([ 'SCHEDULED', 'CONFIRMED' ].includes(appointment.status)) {
-            parts.push(`<button class="btn btn-sm btn-outline-secondary me-1" onclick="rescheduleAppointment('${appointment.id}')" title="Dời lịch"><i class="fas fa-calendar-alt"></i></button>`);
-        }
-    }
+    // Remove duplicate reschedule button: use Edit for rescheduling
     // Cancel - ALWAYS append last if allowed
     if ([ 'SCHEDULED', 'CONFIRMED' ].includes(appointment.status)) {
         parts.push(`<button class="btn btn-sm btn-outline-danger" onclick="cancelAppointment('${appointment.id}')" title="Hủy lịch"><i class="fas fa-times"></i></button>`);
@@ -484,11 +509,8 @@ async function handleAddAppointment(e) {
     try {
         const formData = new FormData(e.target);
         const data = Object.fromEntries(formData.entries());
-        
-        console.log('📅 Adding appointment:', data);
-        
+
         const response = await axios.post('/api/appointments/', data);
-        console.log('📅 Appointment added:', response.data);
         
         showAlert('Đặt lịch hẹn thành công!', 'success');
         
@@ -527,11 +549,10 @@ async function handleUpdateAppointment(e) {
         const appointmentId = data.id;
         
         delete data.id; // Remove id from data
-        
-        console.log('📅 Updating appointment:', appointmentId, data);
-        
+        // Ensure appointment_time is HH:MM
+        if (data.appointment_time) data.appointment_time = String(data.appointment_time).slice(0,5);
+
         const response = await axios.patch(`/api/appointments/${appointmentId}/`, data);
-        console.log('📅 Appointment updated:', response.data);
         
         showAlert('Cập nhật lịch hẹn thành công!', 'success');
         
@@ -560,14 +581,50 @@ async function handleUpdateAppointment(e) {
     }
 }
 
+function updateEditSaveState() {
+    try {
+        const baseline = window.__EDIT_BASELINE__ || {};
+        const date = document.getElementById('edit-appointment-date')?.value || '';
+        const time = document.getElementById('edit-appointment-time')?.value || '';
+        const priority = document.getElementById('edit-priority')?.value || '';
+        const complaint = document.getElementById('edit-chief-complaint')?.value || '';
+        const notes = document.getElementById('edit-notes')?.value || '';
+        const changed = (
+            baseline.date !== date ||
+            baseline.time !== time ||
+            baseline.priority !== priority ||
+            (baseline.complaint || '') !== (complaint || '') ||
+            (baseline.notes || '') !== (notes || '')
+        );
+        const btn = document.getElementById('edit-save-btn');
+        if (btn) btn.disabled = !changed;
+    } catch (e) { /* noop */ }
+}
+
+async function loadEditTimeSlots(doctorId, date, cb) {
+    try {
+        if (!doctorId || !date) return cb && cb([]);
+        const resp = await axios.get(`/api/doctors/${doctorId}/available_slots/?date=${date}`);
+        const slots = resp.data || [];
+        const vnNow = getVietnamNow();
+        const selectedDate = new Date(date + 'T00:00:00');
+        const isToday = selectedDate.toDateString() === vnNow.toDateString();
+        const available = slots.filter(s => {
+            if (!isToday) return true;
+            const [hh, mm] = String(s.time || '').split(':').map(Number);
+            const slotTime = new Date(vnNow);
+            slotTime.setHours(hh || 0, mm || 0, 0, 0);
+            const minTime = new Date(vnNow.getTime() + 15 * 60 * 1000);
+            return slotTime >= minTime;
+        });
+        cb && cb(available);
+    } catch (e) { cb && cb([]); }
+}
+
 async function viewAppointment(appointmentId) {
     try {
-        console.log('📅 Loading appointment details:', appointmentId);
-        
         const response = await axios.get(`/api/appointments/${appointmentId}/`);
         const appointment = response.data;
-        
-        console.log('📅 Appointment data:', appointment);
         
         populateViewModal(appointment);
         
@@ -582,12 +639,8 @@ async function viewAppointment(appointmentId) {
 
 async function editAppointment(appointmentId) {
     try {
-        console.log('📅 Loading appointment for edit:', appointmentId);
-        
         const response = await axios.get(`/api/appointments/${appointmentId}/`);
         const appointment = response.data;
-        
-        console.log('📅 Appointment data:', appointment);
         
         populateEditForm(appointment);
         
@@ -602,10 +655,7 @@ async function editAppointment(appointmentId) {
 
 async function confirmAppointment(appointmentId) {
     try {
-        console.log('📅 Confirming appointment:', appointmentId);
-        
         const response = await axios.post(`/api/appointments/${appointmentId}/confirm/`);
-        console.log('📅 Appointment confirmed:', response.data);
         
         showAlert('Xác nhận lịch hẹn thành công!', 'success');
         loadAppointments();
@@ -618,10 +668,7 @@ async function confirmAppointment(appointmentId) {
 
 async function checkinAppointment(appointmentId) {
     try {
-        console.log('📅 Checking in appointment:', appointmentId);
-        
         const response = await axios.post(`/api/appointments/${appointmentId}/checkin/`);
-        console.log('📅 Appointment checked in:', response.data);
         
         showAlert('Check-in thành công!', 'success');
         loadAppointments();
@@ -637,9 +684,8 @@ async function checkinAppointment(appointmentId) {
 
 async function cancelAppointment(appointmentId) {
     // Removed browser confirm - use UI modal if needed
-    
+
     try {
-        console.log('📅 Cancelling appointment:', appointmentId);
         
         const response = await axios.post(`/api/appointments/${appointmentId}/cancel/`, {
             reason: 'Hủy lịch hẹn từ giao diện quản trị'
@@ -656,7 +702,6 @@ async function cancelAppointment(appointmentId) {
 
 async function startExamination(appointmentId) {
     try {
-        console.log('📅 Starting examination:', appointmentId);
         
         const response = await axios.patch(`/api/appointments/${appointmentId}/`, {
             status: 'IN_PROGRESS',
@@ -674,9 +719,8 @@ async function startExamination(appointmentId) {
 
 async function completeAppointment(appointmentId) {
     // Removed browser confirm - use UI modal if needed
-    
+
     try {
-        console.log('📅 Completing appointment:', appointmentId);
         
         const response = await axios.patch(`/api/appointments/${appointmentId}/`, {
             status: 'COMPLETED',
@@ -694,12 +738,8 @@ async function completeAppointment(appointmentId) {
 
 async function rescheduleAppointment(appointmentId) {
     try {
-        console.log('📅 Loading appointment for reschedule:', appointmentId);
-        
         const response = await axios.get(`/api/appointments/${appointmentId}/`);
         const appointment = response.data;
-        
-        console.log('📅 Appointment data for reschedule:', appointment);
         
         // Populate edit form with current data
         populateEditForm(appointment);
@@ -761,11 +801,46 @@ function populateEditForm(appointment) {
     
     document.getElementById('edit-appointment-id').value = appointment.id;
     document.getElementById('edit-appointment-date').value = appointment.appointment_date;
-    document.getElementById('edit-appointment-time').value = (appointment.appointment_time || '').slice(0,5);
+    document.getElementById('edit-doctor-id').value = appointment.doctor;
+    // Prepare time select with available slots
+    const timeSelect = document.getElementById('edit-appointment-time');
+    if (timeSelect) {
+        timeSelect.innerHTML = '<option value="">Đang tải khung giờ...</option>';
+        timeSelect.disabled = true;
+        loadEditTimeSlots(appointment.doctor, appointment.appointment_date, (slots) => {
+            timeSelect.innerHTML = '';
+            if (!slots || slots.length === 0) {
+                timeSelect.innerHTML = '<option value="">Không còn giờ phù hợp</option>';
+                timeSelect.disabled = true;
+            } else {
+                slots.forEach(s => {
+                    const t = String(s.time || '').slice(0,5);
+                    const opt = document.createElement('option');
+                    opt.value = t;
+                    opt.textContent = t;
+                    timeSelect.appendChild(opt);
+                });
+                timeSelect.disabled = false;
+                // Preselect current time if still available
+                const currentTime = (appointment.appointment_time || '').slice(0,5);
+                timeSelect.value = currentTime && slots.some(s => String(s.time).startsWith(currentTime))
+                    ? currentTime
+                    : String(slots[0].time || '').slice(0,5);
+            }
+        });
+    }
     document.getElementById('edit-priority').value = appointment.priority;
-    document.getElementById('edit-status').value = appointment.status;
     document.getElementById('edit-chief-complaint').value = appointment.chief_complaint || '';
     document.getElementById('edit-notes').value = appointment.notes || '';
+    // Save baseline for change detection
+    window.__EDIT_BASELINE__ = {
+        date: appointment.appointment_date,
+        time: (appointment.appointment_time || '').slice(0,5),
+        priority: appointment.priority,
+        complaint: appointment.chief_complaint || '',
+        notes: appointment.notes || ''
+    };
+    updateEditSaveState();
 }
 
 // Utility functions
@@ -852,7 +927,6 @@ function showAlert(message, type = 'info') {
 function checkAuth() {
     const token = localStorage.getItem('access_token');
     if (!token) {
-        console.log('🔒 No access token, redirecting to login');
         window.location.href = '/auth/login/';
         return false;
     }

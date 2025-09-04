@@ -433,7 +433,6 @@ function enforcePharmacistRouteGuard() {
         if (!isAuthenticated || !isPharmacistUser()) return;
         const url = new URL(window.location.href);
         if (!isAllowedPharmacistPath(url.pathname)) {
-            console.log('Pharmacist redirect: từ', url.pathname, 'đến /pharmacy/');
             window.location.replace('/pharmacy/');
             return true; // Đã redirect, ngừng xử lý
         }
@@ -493,7 +492,6 @@ function enforceDoctorRouteGuard() {
         if (!isAuthenticated || !isDoctorUser()) return;
         const url = new URL(window.location.href);
         if (!isAllowedDoctorPath(url.pathname)) {
-            console.log('Doctor redirect: từ', url.pathname, 'đến /doctor/prescriptions/');
             window.location.replace('/doctor/prescriptions/');
         }
     } catch (e) { /* noop */ }

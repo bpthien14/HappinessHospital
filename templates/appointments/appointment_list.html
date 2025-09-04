@@ -58,6 +58,14 @@
                     <i class="fas fa-search"></i>
                 </button>
             </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="my-appointments-only" checked>
+                    <label class="form-check-label" for="my-appointments-only">
+                        Chỉ hiển thị lịch hẹn của tôi
+                    </label>
+                </div>
+            </div>
         </form>
     </div>
 </div>
@@ -310,6 +318,7 @@
             <form id="edit-appointment-form">
                 <div class="modal-body">
                     <input type="hidden" id="edit-appointment-id" name="id">
+                    <input type="hidden" id="edit-doctor-id" name="doctor">
                     
                     <div class="row mb-3">
                         <div class="col-md-6">
@@ -318,7 +327,9 @@
                         </div>
                         <div class="col-md-6">
                             <label for="edit-appointment-time" class="form-label">Giờ khám <span class="text-danger">*</span></label>
-                            <input type="time" class="form-control" id="edit-appointment-time" name="appointment_time" required>
+                            <select class="form-select" id="edit-appointment-time" name="appointment_time" required>
+                                <option value="">Chọn bác sĩ và ngày để gợi ý giờ</option>
+                            </select>
                         </div>
                     </div>
                     
@@ -333,16 +344,7 @@
                             </select>
                         </div>
                         <div class="col-md-6">
-                            <label for="edit-status" class="form-label">Trạng thái</label>
-                            <select class="form-select" id="edit-status" name="status">
-                                <option value="SCHEDULED">Đã đặt lịch</option>
-                                <option value="CONFIRMED">Đã xác nhận</option>
-                                <option value="CHECKED_IN">Đã check-in</option>
-                                <option value="IN_PROGRESS">Đang khám</option>
-                                <option value="COMPLETED">Hoàn thành</option>
-                                <option value="CANCELLED">Đã hủy</option>
-                                <option value="NO_SHOW">Không đến</option>
-                            </select>
+                            <!-- Bỏ thay đổi trạng thái trong popup chỉnh sửa -->
                         </div>
                     </div>
                     
@@ -362,7 +364,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                    <button type="submit" class="btn btn-primary">
+                    <button type="submit" class="btn btn-primary" id="edit-save-btn" disabled>
                         <i class="fas fa-save"></i> Cập nhật
                     </button>
                 </div>
@@ -374,5 +376,5 @@
 
 {% block extra_js %}
 {% load static %}
-<script src="{% static 'js/appointments.js' %}?v=4"></script>
+<script src="{% static 'js/appointments.js' %}?v=5"></script>
 {% endblock %}
