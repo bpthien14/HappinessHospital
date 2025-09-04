@@ -55,7 +55,7 @@ echo "🏥 Running health checks..."
 
 # Gateway health
 echo "🔍 Checking gateway health..."
-if curl -s http://localhost/health > /dev/null; then
+if curl -s http://localhost/health/ > /dev/null; then
     echo "✅ Gateway is healthy"
 else
     echo "❌ Gateway health check failed"
@@ -69,7 +69,7 @@ for i in "${!services[@]}"; do
     service=${services[$i]}
     port=${ports[$i]}
     echo "🔍 Checking $service service health..."
-    if curl -s http://localhost:$port/health > /dev/null; then
+    if curl -s http://localhost:$port/health/ > /dev/null; then
         echo "✅ $service service is healthy"
     else
         echo "❌ $service service health check failed"

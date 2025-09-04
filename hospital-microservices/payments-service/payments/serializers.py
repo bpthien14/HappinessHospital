@@ -25,8 +25,8 @@ class PrescriptionField(serializers.Field):
 
 
 class PaymentSerializer(serializers.ModelSerializer):
-    prescription_id = serializers.UUIDField(source='prescription_id', read_only=True)
-    created_by_id = serializers.UUIDField(source='created_by_id', read_only=True)
+    prescription_id = serializers.UUIDField(read_only=True)
+    created_by_id = serializers.UUIDField(read_only=True)
     vnpay_payment_url = serializers.SerializerMethodField()
 
     class Meta:
