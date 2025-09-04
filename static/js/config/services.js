@@ -267,7 +267,3 @@ window.ServiceHelper = {
         return getEndpointURL(serviceName, endpoint, params);
     }
 };
-
-console.log('🏥 Hospital Services Configuration Loaded');
-console.log('📍 Current Environment:', CURRENT_ENV);
-console.log('🔧 Service Config:', getCurrentServiceConfig());

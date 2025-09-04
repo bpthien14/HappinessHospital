@@ -95,8 +95,8 @@ class PrescriptionItemSerializer(serializers.ModelSerializer):
     frequency_display = serializers.CharField(source='get_frequency_display', read_only=True)
     route_display = serializers.CharField(source='get_route_display', read_only=True)
     
-    # For backward compatibility and detailed view
-    drug = DrugSerializer(read_only=True)
+    # Accept drug by primary key for write; keep display fields for read
+    drug = serializers.PrimaryKeyRelatedField(queryset=Drug.objects.all())
     
     # Computed fields
     quantity_remaining = serializers.ReadOnlyField()

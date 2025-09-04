@@ -198,8 +198,13 @@ class AppointmentViewSet(ModelViewSet):
         serializer.save(booked_by=self.request.user)
     
     def perform_update(self, serializer):
-        # Track status changes
+        # Track status changes and enforce role for doctor-only transitions
         old_instance = self.get_object()
+        requested_status = serializer.validated_data.get('status')
+        if requested_status in ['IN_PROGRESS', 'COMPLETED']:
+            user = self.request.user
+            if not user.is_authenticated or getattr(user, 'user_type', '').upper() != 'DOCTOR':
+                raise PermissionError('Chỉ bác sĩ mới được thay đổi trạng thái khám')
         new_instance = serializer.save()
         
         if old_instance.status != new_instance.status:
@@ -238,6 +243,9 @@ class AppointmentViewSet(ModelViewSet):
     def confirm(self, request, pk=None):
         """Confirm an appointment"""
         appointment = self.get_object()
+        # Chỉ cho phép bác sĩ xác nhận
+        if not request.user.is_authenticated or getattr(request.user, 'user_type', '').upper() != 'DOCTOR':
+            return Response({'error': 'Chỉ bác sĩ mới được xác nhận lịch hẹn'}, status=status.HTTP_403_FORBIDDEN)
         
         if appointment.status != 'SCHEDULED':
             return Response(
@@ -266,6 +274,9 @@ class AppointmentViewSet(ModelViewSet):
     def checkin(self, request, pk=None):
         """Check-in for appointment"""
         appointment = self.get_object()
+        # Chỉ lễ tân được check-in
+        if not request.user.is_authenticated or getattr(request.user, 'user_type', '').upper() != 'RECEPTION':
+            return Response({'error': 'Chỉ lễ tân mới được thực hiện check-in'}, status=status.HTTP_403_FORBIDDEN)
         
         # Tạm bỏ logic kiểm tra thời gian - cho phép check-in tự do để test
         # now = datetime.now()
@@ -295,12 +306,30 @@ class AppointmentViewSet(ModelViewSet):
     def cancel(self, request, pk=None):
         """Cancel an appointment"""
         appointment = self.get_object()
-        
-        if not appointment.can_cancel:
-            return Response(
-                {'error': 'Không thể hủy lịch hẹn này'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        user = request.user
+        # Bệnh nhân chỉ được hủy khi trạng thái vẫn là Đã đặt lịch (chưa được bác sĩ chấp nhận)
+        if getattr(user, 'user_type', '').upper() == 'PATIENT':
+            # Xác định quyền sở hữu bằng số điện thoại
+            try:
+                patient_phone = getattr(appointment.patient, 'phone_number', None)
+                user_phone = getattr(user, 'phone_number', None)
+            except Exception:
+                patient_phone = None
+                user_phone = None
+            if not patient_phone or not user_phone or str(patient_phone) != str(user_phone):
+                return Response({'error': 'Bạn chỉ có thể hủy lịch hẹn của chính mình'}, status=status.HTTP_403_FORBIDDEN)
+            if appointment.status != 'SCHEDULED':
+                return Response({'error': 'Chỉ được hủy trước khi bác sĩ chấp nhận lịch hẹn'}, status=status.HTTP_400_BAD_REQUEST)
+            # Ngoài ra vẫn tôn trọng quy tắc thời gian
+            if not appointment.can_cancel:
+                return Response({'error': 'Không thể hủy do đã gần/qua giờ hẹn'}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            # Nhân sự nội bộ: vẫn cần tôn trọng can_cancel để an toàn dữ liệu
+            if not appointment.can_cancel:
+                return Response(
+                    {'error': 'Không thể hủy lịch hẹn này'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
         
         reason = request.data.get('reason', '')
         old_status = appointment.status

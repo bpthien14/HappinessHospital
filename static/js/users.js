@@ -153,8 +153,6 @@ async function loadUsers() {
             params.append('is_active', statusFilter);
         }
 
-        console.log('Loading users with params:', Object.fromEntries(params));
-
         const response = await axios.get(`/api/users/?${params}`);
         displayUsers(response.data.results);
         updatePagination(response.data);

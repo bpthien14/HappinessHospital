@@ -7,20 +7,15 @@ let currentPage = 1;
 let totalPages = 1;
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🩺 Doctors page: DOM loaded');
-    
     // Đợi axios interceptors sẵn sàng
     if (window.HospitalApp && window.HospitalApp.interceptorsReady) {
-        console.log('🩺 Axios interceptors ready, initializing doctors');
         initializeDoctors();
     } else {
-        console.log('🩺 Waiting for axios interceptors...');
         // Đợi event từ main.js
         window.addEventListener('axiosInterceptorsReady', initializeDoctors);
         // Fallback: đợi tối đa 2 giây
         setTimeout(() => {
             if (window.HospitalApp && window.HospitalApp.interceptorsReady) {
-                console.log('🩺 Axios interceptors ready after timeout, initializing doctors');
                 initializeDoctors();
             } else {
                 console.error('❌ Axios interceptors not ready after timeout');
@@ -31,12 +26,10 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function initializeDoctors() {
-    console.log('🩺 Initializing doctors management');
     if (checkAuth()) {
         loadDoctors();
         loadDepartments();
         setupEventListeners();
-        console.log('🩺 Doctors management initialized successfully');
     }
 }
 
@@ -61,6 +54,14 @@ function setupEventListeners() {
     const editForm = document.getElementById('edit-doctor-form');
     if (editForm) {
         editForm.addEventListener('submit', handleUpdateDoctor);
+        // Enable save only when changed
+        const ids = ['edit-username','edit-email','edit-first_name','edit-last_name','edit-phone_number','edit-is_active','edit-dob','edit-gender','edit-license-number','edit-degree','edit-department','edit-years_of_experience','edit-specializations','edit-max_patients_per_day','edit-consultation_duration','edit-bio','edit-qualifications'];
+        ids.forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            const eventName = (el.tagName === 'SELECT' || el.type === 'date') ? 'change' : 'input';
+            el.addEventListener(eventName, updateEditDoctorSaveState);
+        });
     }
 
     // Filter inputs
@@ -87,9 +88,60 @@ function setupEventListeners() {
     });
 }
 
+function captureEditDoctorBaseline() {
+    // Capture baseline from current form values instead of original data
+    // This ensures we capture what was actually populated in the form
+    window.__DOCTOR_EDIT_BASELINE__ = {
+        username: document.getElementById('edit-username')?.value || '',
+        email: document.getElementById('edit-email')?.value || '',
+        first_name: document.getElementById('edit-first_name')?.value || '',
+        last_name: document.getElementById('edit-last_name')?.value || '',
+        phone_number: document.getElementById('edit-phone_number')?.value || '',
+        is_active: document.getElementById('edit-is_active')?.value || '',
+        dob: document.getElementById('edit-dob')?.value || '',
+        gender: document.getElementById('edit-gender')?.value || '',
+        license_number: document.getElementById('edit-license-number')?.value || '',
+        degree: document.getElementById('edit-degree')?.value || '',
+        department: document.getElementById('edit-department')?.value || '',
+        years: document.getElementById('edit-years_of_experience')?.value || '',
+        specialization: document.getElementById('edit-specializations')?.value || '',
+        max_per_day: document.getElementById('edit-max_patients_per_day')?.value || '',
+        duration: document.getElementById('edit-consultation_duration')?.value || '',
+        bio: document.getElementById('edit-bio')?.value || '',
+        qualifications: document.getElementById('edit-qualifications')?.value || ''
+    };
+    updateEditDoctorSaveState();
+}
+
+function updateEditDoctorSaveState() {
+    try {
+        const b = window.__DOCTOR_EDIT_BASELINE__ || {};
+        const val = id => (document.getElementById(id)?.value || '');
+        const changed = (
+            b.username !== val('edit-username') ||
+            b.email !== val('edit-email') ||
+            b.first_name !== val('edit-first_name') ||
+            b.last_name !== val('edit-last_name') ||
+            b.phone_number !== val('edit-phone_number') ||
+            b.is_active !== val('edit-is_active') ||
+            b.dob !== val('edit-dob') ||
+            b.gender !== val('edit-gender') ||
+            b.license_number !== val('edit-license-number') ||
+            b.degree !== val('edit-degree') ||
+            String(b.department) !== val('edit-department') ||
+            b.years !== val('edit-years_of_experience') ||
+            b.specialization !== val('edit-specializations') ||
+            b.max_per_day !== val('edit-max_patients_per_day') ||
+            b.duration !== val('edit-consultation_duration') ||
+            b.bio !== val('edit-bio') ||
+            b.qualifications !== val('edit-qualifications')
+        );
+        const btn = document.getElementById('edit-doctor-save-btn');
+        if (btn) btn.disabled = !changed;
+    } catch (e) { /* noop */ }
+}
+
 async function loadDoctors(page = 1) {
-    console.log('🩺 Loading doctors, page:', page);
-    
     try {
         // Lấy filters từ form
         const searchQuery = document.getElementById('search-query')?.value || '';
@@ -109,10 +161,8 @@ async function loadDoctors(page = 1) {
         if (status) params.append('is_active', status);
 
         const url = `/api/doctors/?${params.toString()}`;
-        console.log('🩺 API URL:', url);
 
         const response = await axios.get(url);
-        console.log('🩺 API response:', response.data);
 
         const data = response.data;
         if (data.results) {
@@ -121,8 +171,6 @@ async function loadDoctors(page = 1) {
             
             renderDoctors(data.results);
             updatePagination(data);
-            
-            console.log(`🩺 Loaded ${data.results.length} doctors`);
         } else {
             console.error('❌ Invalid response format:', data);
             showAlert('Lỗi định dạng dữ liệu', 'danger');
@@ -131,7 +179,6 @@ async function loadDoctors(page = 1) {
     } catch (error) {
         console.error('❌ Error loading doctors:', error);
         if (error.response?.status === 401) {
-            console.log('🔒 Authentication required, redirecting to login');
             window.location.href = '/auth/login/';
             return;
         }
@@ -141,9 +188,7 @@ async function loadDoctors(page = 1) {
 
 async function loadDepartments() {
     try {
-        console.log('🏥 Loading departments...');
         const response = await axios.get('/api/departments/');
-        console.log('🏥 Departments response:', response.data);
         
         const departments = response.data.results || response.data;
         populateDepartmentSelects(departments);
@@ -160,12 +205,11 @@ function populateDepartmentSelects(departments) {
     selects.forEach(selector => {
         const select = document.querySelector(selector);
         if (select) {
-            console.log(`🏥 Populating ${selector} with ${departments.length} departments`);
             // Clear existing options (except first one)
             const firstOption = select.firstElementChild;
             select.innerHTML = '';
             if (firstOption) select.appendChild(firstOption);
-            
+
             // Add department options
             departments.forEach(dept => {
                 const option = document.createElement('option');
@@ -173,8 +217,6 @@ function populateDepartmentSelects(departments) {
                 option.textContent = dept.name;
                 select.appendChild(option);
             });
-        } else {
-            console.log(`⚠️ Selector ${selector} not found`);
         }
     });
 }
@@ -341,7 +383,6 @@ function showAlert(message, type = 'info') {
 function checkAuth() {
     const token = localStorage.getItem('access_token');
     if (!token) {
-        console.log('🔒 No access token, redirecting to login');
         window.location.href = '/auth/login/';
         return false;
     }
@@ -356,30 +397,34 @@ async function handleAddDoctor(e) {
     try {
         const formData = new FormData(e.target);
         const data = Object.fromEntries(formData.entries());
-        
-        console.log('🩺 Form data received:', data);
-        
-        // Step 1: Create User first
+
+        // Step 1: Create User first via auth/register to ensure password_confirm and proper defaults
         const userData = {
             username: data.username,
             email: data.email,
             first_name: data.first_name,
             last_name: data.last_name,
             password: data.password,
+            password_confirm: data.password,
             phone_number: data.phone_number || '',
             employee_id: data.employee_id,
-            user_type: 'DOCTOR'
+            user_type: 'DOCTOR',
+            date_of_birth: data.date_of_birth || null,
+            gender: data.gender || 'O'
         };
-        
-        console.log('🩺 Creating user:', userData);
-        const userResponse = await axios.post('/api/users/', userData);
-        console.log('🩺 User created:', userResponse.data);
-        
+
+        const userResponse = await axios.post('/api/auth/register/', userData);
+
         // Step 2: Create Doctor Profile
+        // Auto-generate employee_id and license_number: BS + YY + 4 digits
+        const now = new Date();
+        const yy = String(now.getFullYear()).slice(2);
+        const rand = Math.floor(Math.random() * 9000) + 1000; // fallback counter
+        const generatedId = `BS${yy}${rand}`;
         const doctorData = {
-            user: userResponse.data.id,
+            user: userResponse.data.user?.id || userResponse.data.id,
             department: data.department,
-            license_number: data.license_number,
+            license_number: generatedId,
             degree: data.degree,
             specialization: data.specializations || 'Chưa xác định',
             experience_years: parseInt(data.years_of_experience) || 0,
@@ -389,10 +434,8 @@ async function handleAddDoctor(e) {
             achievements: data.qualifications || '',
             is_active: true
         };
-        
-        console.log('🩺 Creating doctor profile:', doctorData);
+
         const doctorResponse = await axios.post('/api/doctors/', doctorData);
-        console.log('🩺 Doctor profile created:', doctorResponse.data);
         
         showAlert('Thêm bác sĩ thành công!', 'success');
         
@@ -434,8 +477,18 @@ async function handleUpdateDoctor(e) {
         // Remove doctor_id from data
         delete data.doctor_id;
         
-        // Convert form field names to API field names
-        const updateData = {
+        // Prepare payloads for user and doctor profile updates
+        const userPayload = {
+            username: data.username,
+            email: data.email,
+            first_name: data.first_name,
+            last_name: data.last_name,
+            phone_number: data.phone_number || null,
+            date_of_birth: (data.date_of_birth ? String(data.date_of_birth).slice(0,10) : null),
+            gender: data.gender || 'O',
+            is_active: data.is_active === 'true'
+        };
+        const doctorPayload = {
             license_number: data.license_number,
             degree: data.degree,
             department: data.department,
@@ -447,17 +500,35 @@ async function handleUpdateDoctor(e) {
             achievements: data.qualifications || '',
             is_active: data.is_active === 'true'
         };
-        
-        console.log('🩺 Updating doctor:', doctorId, updateData);
-        
-        const response = await axios.patch(`/api/doctors/${doctorId}/`, updateData);
-        console.log('🩺 Doctor updated:', response.data);
-        
+
+        // We need user id to update user fields
+        let userId = document.getElementById('edit-doctor-id')?.dataset?.userId;
+        if (!userId) {
+            try {
+                const detail = await axios.get(`/api/doctors/${doctorId}/`);
+                userId = detail.data?.user?.id || detail.data?.user;
+            } catch (err) { /* noop */ }
+        }
+
+        // Perform updates: user first (if available), then doctor profile
+        if (userId) {
+            try {
+                await axios.patch(`/api/users/${userId}/`, userPayload);
+            } catch (err) {
+                if (err?.response?.status === 403 || err?.response?.status === 404) {
+                    try { await axios.put('/api/auth/profile/update/', userPayload); } catch (e) { /* noop */ }
+                }
+            }
+        }
+        const response = await axios.patch(`/api/doctors/${doctorId}/`, doctorPayload);
+
         showAlert('Cập nhật bác sĩ thành công!', 'success');
         
         // Close modal and reload data
         const modal = bootstrap.Modal.getInstance(document.getElementById('editDoctorModal'));
         modal.hide();
+        // Reset save button state baseline
+        captureEditDoctorBaseline();
         
         loadDoctors();
         
@@ -482,13 +553,9 @@ async function handleUpdateDoctor(e) {
 
 async function viewDoctor(doctorId) {
     try {
-        console.log('🩺 Loading doctor details:', doctorId);
-        
         const response = await axios.get(`/api/doctors/${doctorId}/`);
         const doctor = response.data;
-        
-        console.log('🩺 Doctor data:', doctor);
-        
+
         populateViewModal(doctor);
         
         const modal = new bootstrap.Modal(document.getElementById('viewDoctorModal'));
@@ -502,17 +569,32 @@ async function viewDoctor(doctorId) {
 
 async function editDoctor(doctorId) {
     try {
-        console.log('🩺 Loading doctor for edit:', doctorId);
-        
         const response = await axios.get(`/api/doctors/${doctorId}/`);
         const doctor = response.data;
-        
-        console.log('🩺 Doctor data:', doctor);
-        
-        populateEditForm(doctor);
+
+        await populateEditForm(doctor);
         
         const modal = new bootstrap.Modal(document.getElementById('editDoctorModal'));
         modal.show();
+
+        // Add change listener to form fields to enable/disable save button
+        const form = document.getElementById('edit-doctor-form');
+        if (form) {
+            const inputs = form.querySelectorAll('input, select, textarea');
+            inputs.forEach(input => {
+                input.addEventListener('input', updateEditDoctorSaveState);
+                input.addEventListener('change', updateEditDoctorSaveState);
+            });
+
+            // Clean up listeners when modal is hidden
+            const modalElement = document.getElementById('editDoctorModal');
+            modalElement.addEventListener('hidden.bs.modal', () => {
+                inputs.forEach(input => {
+                    input.removeEventListener('input', updateEditDoctorSaveState);
+                    input.removeEventListener('change', updateEditDoctorSaveState);
+                });
+            }, { once: true });
+        }
         
     } catch (error) {
         console.error('❌ Error loading doctor:', error);
@@ -522,10 +604,8 @@ async function editDoctor(doctorId) {
 
 async function deleteDoctor(doctorId) {
     // Removed browser confirm - use UI modal if needed
-    
+
     try {
-        console.log('🩺 Deleting doctor:', doctorId);
-        
         await axios.delete(`/api/doctors/${doctorId}/`);
         
         showAlert('Xóa bác sĩ thành công!', 'success');
@@ -547,18 +627,18 @@ function populateViewModal(doctor) {
     const modal = document.getElementById('viewDoctorModal');
     if (!modal) return;
     
-    const fullName = doctor.user ? `${doctor.user.first_name} ${doctor.user.last_name}`.trim() : 'N/A';
+    const fullName = doctor.doctor_name || (doctor.user ? `${doctor.user.first_name || ''} ${doctor.user.last_name || ''}`.trim() : '') || 'N/A';
     
     // Update modal content with doctor details
     const fields = {
         'view-employee-id': doctor.license_number,
         'view-full-name': fullName,
-        'view-email': doctor.user?.email,
-        'view-phone': doctor.user?.phone_number,
-        'view-birth-date': doctor.user?.date_of_birth || 'Chưa cập nhật',
-        'view-gender': doctor.user?.gender === 'M' ? 'Nam' : (doctor.user?.gender === 'F' ? 'Nữ' : 'Khác'),
+        'view-email': (doctor.user?.email || doctor.email || 'Chưa cập nhật'),
+        'view-phone': (doctor.user?.phone_number || doctor.phone || 'Chưa cập nhật'),
+        'view-birth-date': (doctor.user?.date_of_birth || 'Chưa cập nhật'),
+        'view-gender': (doctor.user?.gender === 'M' ? 'Nam' : (doctor.user?.gender === 'F' ? 'Nữ' : (doctor.user?.gender ? 'Khác' : 'Chưa cập nhật'))),
         'view-degree': formatDegree(doctor.degree),
-        'view-department': doctor.department?.name || 'Chưa phân khoa',
+        'view-department': doctor.department?.name || doctor.department_name || 'Chưa phân khoa',
         'view-specializations': doctor.specialization,
         'view-experience': (doctor.experience_years || 0) + ' năm',
         'view-license': doctor.license_number,
@@ -571,36 +651,101 @@ function populateViewModal(doctor) {
             element.textContent = value || 'Chưa cập nhật';
         }
     });
+
+    // Fetch user data if DOB/Gender missing and update
+    const needsUserFetch = !(doctor.user && typeof doctor.user === 'object' && doctor.user.date_of_birth && doctor.user.gender);
+    const userId = (doctor.user && typeof doctor.user !== 'object') ? doctor.user : doctor.user?.id;
+    if (needsUserFetch && userId) {
+        axios.get(`/api/users/${userId}/`).then(resp => {
+            const u = resp.data || {};
+            const dobEl = modal.querySelector('#view-birth-date');
+            const genEl = modal.querySelector('#view-gender');
+            if (dobEl && u.date_of_birth) dobEl.textContent = u.date_of_birth;
+            if (genEl && u.gender) genEl.textContent = (u.gender === 'M' ? 'Nam' : (u.gender === 'F' ? 'Nữ' : 'Khác'));
+        }).catch(() => {});
+    }
 }
 
-function populateEditForm(doctor) {
+async function populateEditForm(doctor) {
     const form = document.getElementById('edit-doctor-form');
     if (!form) return;
-    
-    console.log('🩺 Populating edit form with:', doctor);
-    
+
     // Set doctor ID
     document.getElementById('edit-doctor-id').value = doctor.id;
     
     // Populate user fields
-    if (doctor.user) {
-        document.getElementById('edit-first_name').value = doctor.user.first_name || '';
-        document.getElementById('edit-last_name').value = doctor.user.last_name || '';
-        document.getElementById('edit-email').value = doctor.user.email || '';
-        document.getElementById('edit-phone_number').value = doctor.user.phone_number || '';
-        document.getElementById('edit-username').value = doctor.user.username || '';
-        document.getElementById('edit-employee_id').value = doctor.user.employee_id || '';
+    const setIfExists = (id, value) => { const el = document.getElementById(id); if (el) el.value = value || ''; };
+    let userData = null;
+    try {
+        // If doctor.user is an object with fields
+        if (doctor.user && typeof doctor.user === 'object') {
+            userData = doctor.user;
+        } else if (doctor.user) {
+            // doctor.user is likely an ID -> fetch user detail
+            const userResp = await axios.get(`/api/users/${doctor.user}/`);
+            userData = userResp.data;
+        }
+    } catch (e) {
+        // Fallback to available flat fields
+        userData = {
+            email: doctor.email,
+            phone_number: doctor.phone,
+            first_name: (doctor.doctor_name || '').split(' ').slice(0, -1).join(' '),
+            last_name: (doctor.doctor_name || '').split(' ').slice(-1).join(' ')
+        };
+    }
+
+    if (userData) {
+        setIfExists('edit-first_name', userData.first_name);
+        setIfExists('edit-last_name', userData.last_name);
+        setIfExists('edit-email', userData.email);
+        setIfExists('edit-phone_number', userData.phone_number);
+        setIfExists('edit-username', userData.username);
+        setIfExists('edit-employee_id', userData.employee_id || doctor.license_number);
+        const idHolder = document.getElementById('edit-doctor-id');
+        if (idHolder) { idHolder.dataset.userId = userData.id || ''; }
+        setIfExists('edit-dob', userData.date_of_birth);
+        const genderEl = document.getElementById('edit-gender'); if (genderEl) genderEl.value = userData.gender || 'O';
     }
     
     // Populate doctor profile fields
-    document.getElementById('edit-license-number').value = doctor.license_number || '';
-    document.getElementById('edit-degree').value = doctor.degree || '';
-    document.getElementById('edit-department').value = doctor.department?.id || '';
-    document.getElementById('edit-years_of_experience').value = doctor.experience_years || '';
-    document.getElementById('edit-specializations').value = doctor.specialization || '';
-    document.getElementById('edit-max_patients_per_day').value = doctor.max_patients_per_day || '';
-    document.getElementById('edit-consultation_duration').value = doctor.consultation_duration || '';
-    document.getElementById('edit-is_active').value = doctor.is_active ? 'true' : 'false';
-    document.getElementById('edit-bio').value = doctor.bio || '';
-    document.getElementById('edit-qualifications').value = doctor.achievements || '';
+    // Reuse setter for profile fields
+    setIfExists('edit-license-number', doctor.license_number);
+    setIfExists('edit-degree', doctor.degree);
+    // Ensure departments loaded before setting value
+    try {
+        const deptSelect = document.getElementById('edit-department');
+        if (deptSelect && deptSelect.options.length <= 1) {
+            await loadDepartments();
+        }
+        if (deptSelect) {
+            const deptValue = String(
+                doctor.department || doctor.department_id || (doctor.department && doctor.department.id) || ''
+            );
+            if (deptValue) {
+                deptSelect.value = deptValue;
+            }
+            // Fallback: try match by department name if value didn't set
+            if (!deptSelect.value && doctor.department_name) {
+                for (let i = 0; i < deptSelect.options.length; i++) {
+                    if (deptSelect.options[i].textContent === doctor.department_name) {
+                        deptSelect.selectedIndex = i;
+                        break;
+                    }
+                }
+            }
+        }
+    } catch (e) { /* noop */ }
+    setIfExists('edit-years_of_experience', doctor.experience_years);
+    setIfExists('edit-specializations', doctor.specialization);
+    setIfExists('edit-max_patients_per_day', doctor.max_patients_per_day);
+    setIfExists('edit-consultation_duration', doctor.consultation_duration);
+    const isActiveEl = document.getElementById('edit-is_active'); if (isActiveEl) isActiveEl.value = doctor.is_active ? 'true' : 'false';
+    setIfExists('edit-bio', doctor.bio);
+    setIfExists('edit-qualifications', doctor.achievements);
+
+    // Capture baseline for change detection after all form fields are populated
+    setTimeout(() => {
+        captureEditDoctorBaseline();
+    }, 100);
 }

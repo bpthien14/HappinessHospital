@@ -35,12 +35,10 @@ function initDoctorPrescriptions(){
     
     // Check if user is doctor
     if (!isDoctorUser()) {
-        console.log('⚠️ Access denied: User is not a doctor');
         showDoctorAccessDenied();
         return;
     }
-    
-    console.log('✅ Doctor access confirmed');
+
     setupDoctorUI();
     bindDoctorEvents();
     loadPrescriptions();
@@ -59,7 +57,6 @@ function bindDoctorEvents(){
     
     const myPrescriptionsOnly = document.getElementById('my-prescriptions-only');
     if (myPrescriptionsOnly) myPrescriptionsOnly.addEventListener('change', function(){
-        console.log('🔄 My prescriptions filter changed:', this.checked);
         // Re-render with current data to apply frontend filtering
         if (allPrescriptions) {
             renderPrescriptions(allPrescriptions);
@@ -70,10 +67,11 @@ function bindDoctorEvents(){
     const createModal = document.getElementById('createPrescriptionModal');
     if (createModal) {
         createModal.addEventListener('show.bs.modal', async function() {
-            console.log('🏥 Create prescription modal opening...');
             if (patients.length === 0) {
-                console.log('🔄 Loading patients for modal...');
                 await loadPatients();
+            }
+            if (drugs.length === 0) {
+                await loadDrugs();
             }
         });
     }
@@ -92,28 +90,24 @@ function isDoctorUser() {
                 try {
                     const parsed = JSON.parse(userData);
                     currentUser = parsed;
-                    console.log('📦 User data loaded from localStorage:', currentUser);
                 } catch (e) {
                     console.error('Failed to parse user_data from localStorage:', e);
                     return false;
                 }
             } else {
-                console.log('❌ No user data found in localStorage');
                 return false;
             }
         }
         
         // Check user_type
         if (currentUser.user_type === 'DOCTOR') {
-            console.log('✅ User is DOCTOR by user_type');
             return true;
         }
-        
+
         // Check roles array
         const roles = Array.isArray(currentUser.roles) ? currentUser.roles : [];
         const isDoctor = roles.includes('Doctor') || roles.includes('DOCTOR');
-        console.log('🎭 User roles:', roles, 'isDoctor:', isDoctor);
-        
+
         return isDoctor;
     } catch (e) {
         console.error('Error checking doctor role:', e);
@@ -167,6 +161,14 @@ function setupDoctorUI() {
     
     // Show doctor-specific features
     showDoctorFeatures();
+
+    const header = document.querySelector('.card-header');
+    if (header && !document.getElementById('my-appointments-only')) {
+        document.getElementById('my-prescriptions-only').addEventListener('change', () => {
+            // Reuse prescriptions list as proxy: filter by current doctor name
+            if (allPrescriptions) renderPrescriptions(allPrescriptions);
+        });
+    }
 }
 
 /**
@@ -203,11 +205,9 @@ function showDoctorFeatures() {
  * Load initial data needed for the interface
  */
 async function loadInitialData() {
-    console.log('📊 Loading initial data...');
     try {
         await loadPatients();
         await loadDrugs();
-        console.log('✅ Initial data loaded successfully');
     } catch (error) {
         console.error('❌ Error loading initial data:', error);
     }
@@ -225,9 +225,8 @@ async function loadPatients() {
             console.error('❌ Patients data is not an array:', patients);
             patients = [];
         }
-        
+
         populatePatientSelect();
-        console.log(`✅ Loaded ${patients.length} patients`);
     } catch (error) {
         console.error('❌ Error loading patients:', error);
         patients = []; // Reset to empty array on error
@@ -242,13 +241,14 @@ async function loadPatients() {
 
 async function loadDrugs() {
     try {
-
-        const response = await axios.get('/api/drugs/');
-        drugs = response.data.results || response.data;
-        console.log(`✅ Loaded ${drugs.length} drugs`);
+        // Prefer active drugs from API
+        const response = await axios.get('/api/drugs/?is_active=true');
+        const raw = response.data.results || response.data || [];
+        // Keep only drugs with valid id and in-stock if stock info available
+        drugs = (raw || []).filter(d => d && d.id && (typeof d.current_stock !== 'number' || d.current_stock > 0));
     } catch (error) {
         console.error('❌ Error loading drugs:', error);
-        // Don't show error for drugs, not critical
+        drugs = [];
     }
 }
 
@@ -261,15 +261,13 @@ function populatePatientSelect() {
         console.error('❌ Patient select element not found!');
         return;
     }
-    
+
     // Check if patients array is defined
     if (!patients || !Array.isArray(patients)) {
         console.error('❌ Patients array is not defined or not an array:', patients);
         patientSelect.innerHTML = '<option value="">Lỗi tải danh sách bệnh nhân</option>';
         return;
     }
-    
-    console.log('🔄 Populating patient select with', patients.length, 'patients');
     
     patientSelect.innerHTML = '<option value="">Chọn bệnh nhân</option>';
     
@@ -286,8 +284,6 @@ function populatePatientSelect() {
         option.textContent = `${patient.full_name} - ${identifier}`;
         patientSelect.appendChild(option);
     });
-    
-    console.log('✅ Patient select populated successfully');
 }
 
 /**
@@ -350,9 +346,6 @@ async function loadPrescriptions(page = 1){
         
         renderPrescriptions(data.results || []);
         updatePagination(data);
-        updateTotalCount(data.count || 0);
-        
-        console.log(`✅ Loaded ${(data.results || []).length} prescriptions`);
         
     } catch (error) {
         console.error('❌ Error loading prescriptions:', error);
@@ -387,6 +380,7 @@ function renderPrescriptions(prescriptionsList) {
                 </td>
             </tr>
         `;
+        updateTotalCount(0);
         return;
     }
     
@@ -413,11 +407,14 @@ function renderPrescriptions(prescriptionsList) {
                 </td>
             </tr>
         `;
+        updateTotalCount(0);
         return;
     }
     
     prescriptions = filteredPrescriptions;
     tbody.innerHTML = filteredPrescriptions.map(prescription => createPrescriptionRow(prescription)).join('');
+    // Cập nhật tổng theo danh sách sau khi lọc
+    updateTotalCount(filteredPrescriptions.length);
 }
 
 /**
@@ -500,9 +497,7 @@ function getTypeBadge(type) {
  */
 async function handleAddPrescription(event) {
     event.preventDefault();
-    
-    console.log('📝 Creating new prescription...');
-    
+
     try {
         const formData = new FormData(event.target);
         
@@ -517,13 +512,25 @@ async function handleAddPrescription(event) {
         let doctorId = null;
         if (currentUser && currentUser.doctor_profile_id) {
             doctorId = currentUser.doctor_profile_id;
-        } else {
-            // If no doctor_profile_id, try to find by user_type
-            console.log('⚠️ No doctor_profile_id found, this may cause issues');
-            // For now, we'll try with ID 1 as fallback
-            doctorId = 1;
+        } else if (currentUser && currentUser.id) {
+            // Fetch doctor profile by current user id
+            try {
+                const resp = await axios.get(`/api/doctors/?search=${encodeURIComponent(currentUser.full_name || currentUser.username || '')}`);
+                const list = resp.data.results || resp.data || [];
+                if (Array.isArray(list) && list.length) {
+                    doctorId = list[0].id;
+                }
+            } catch (e) { /* noop */ }
+        }
+        if (!doctorId) {
+            showAlert('Không tìm thấy hồ sơ bác sĩ cho tài khoản hiện tại', 'error');
+            return;
         }
         
+        const now = new Date();
+        const validFromIso = now.toISOString();
+        const validUntil = new Date(now);
+        validUntil.setMonth(validUntil.getMonth() + 3);
         const prescriptionData = {
             patient: patient,
             doctor: doctorId,
@@ -531,14 +538,15 @@ async function handleAddPrescription(event) {
             diagnosis: formData.get('diagnosis') || '',
             notes: formData.get('notes') || '',
             special_instructions: formData.get('special_instructions') || '',
-            valid_from: new Date().toISOString(), // Set current time
-            valid_until: formData.get('valid_until') || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
+            valid_from: validFromIso,
+            valid_until: validUntil.toISOString(),
             items: []
         };
         
         // Get prescription items
         const itemRows = document.querySelectorAll('.prescription-item-row');
         
+        let skippedEmptyRows = 0;
         itemRows.forEach((row, index) => {
             const drugSelect = row.querySelector('[name="drug"]');
             const quantityInput = row.querySelector('[name="quantity"]');
@@ -558,6 +566,7 @@ async function handleAddPrescription(event) {
             const duration = durationInput?.value;
             const instructions = instructionsInput?.value;
             
+            // Backend expects Drug.id (UUID string). Do not cast to number.
             if (drug && quantity && frequency && route && instructions) {
                 const item = {
                     drug: drug,
@@ -569,27 +578,19 @@ async function handleAddPrescription(event) {
                     instructions: instructions
                 };
                 
-                console.log(`✅ Adding item ${index + 1}:`, item);
                 prescriptionData.items.push(item);
             } else {
-                console.log(`⚠️ Skipping row ${index + 1}: missing required fields`, {
-                    drug: !!drug,
-                    quantity: !!quantity,
-                    frequency: !!frequency,
-                    route: !!route,
-                    instructions: !!instructions
-                });
+                skippedEmptyRows++;
             }
         });
-        
-        console.log(`📦 Total items to send: ${prescriptionData.items.length}`);
-        
+
         if (prescriptionData.items.length === 0) {
             showAlert('Vui lòng thêm ít nhất một loại thuốc', 'warning');
             return;
         }
-        
-        console.log('📤 Sending prescription data:', JSON.stringify(prescriptionData, null, 2));
+        if (skippedEmptyRows > 0) {
+            showAlert('Một số dòng thuốc thiếu thông tin đã bị bỏ qua', 'warning');
+        }
         
         const url = '/api/prescriptions/';
         const response = await axios.post(url, prescriptionData, {
@@ -597,8 +598,7 @@ async function handleAddPrescription(event) {
                 'Content-Type': 'application/json'
             }
         });
-        
-        console.log('✅ Prescription created:', response.data);
+
         showAlert('Đơn thuốc đã được tạo thành công', 'success');
         
         // Close modal and refresh list
@@ -673,7 +673,7 @@ function addPrescriptionItem() {
                 <label class="form-label">Thuốc <span class="text-danger">*</span></label>
                 <select class="form-select" name="drug" required>
                     <option value="">Chọn thuốc</option>
-                    ${drugs.map(drug => `<option value="${drug.id}">${drug.name} - ${drug.strength}</option>`).join('')}
+                    ${drugs.map(drug => `<option value="${drug.id}">${drug.name}</option>`).join('')}
                 </select>
             </div>
             <div class="col-md-2">
@@ -708,8 +708,8 @@ function addPrescriptionItem() {
         </div>
         <div class="row mt-2">
             <div class="col-md-3">
-                <label class="form-label">Đường dùng</label>
-                <select class="form-select" name="route">
+                <label class="form-label">Cách dùng</label>
+                <select class="form-select" name="route" onchange="onRouteChange(this)">
                     <option value="ORAL" selected>Uống</option>
                     <option value="TOPICAL">Bôi ngoài da</option>
                     <option value="INJECTION_IM">Tiêm bắp</option>
@@ -727,6 +727,30 @@ function addPrescriptionItem() {
     `;
     
     container.appendChild(itemRow);
+    // Bind route change handler for this row
+    const routeSelect = itemRow.querySelector('select[name="route"]');
+    if (routeSelect) {
+        routeSelect.addEventListener('change', function() { onRouteChange(this); });
+    }
+}
+function onRouteChange(selectEl) {
+    try {
+        const row = selectEl.closest('.prescription-item-row');
+        const instructions = row.querySelector('textarea[name="instructions"]');
+        const route = selectEl.value;
+        const mapping = {
+            'ORAL': 'Uống theo chỉ định của bác sĩ',
+            'TOPICAL': 'Bôi theo chỉ định của bác sĩ',
+            'INJECTION_IM': 'Tiêm bắp theo chỉ định của bác sĩ',
+            'INJECTION_IV': 'Tiêm tĩnh mạch theo chỉ định của bác sĩ',
+            'EYE_DROPS': 'Nhỏ mắt theo chỉ định của bác sĩ',
+            'EAR_DROPS': 'Nhỏ tai theo chỉ định của bác sĩ',
+            'NASAL_DROPS': 'Nhỏ mũi theo chỉ định của bác sĩ'
+        };
+        if (instructions && mapping[route]) {
+            instructions.value = mapping[route];
+        }
+    } catch (e) { /* noop */ }
 }
 
 /**
@@ -743,8 +767,6 @@ function removePrescriptionItem(button) {
  * View prescription details
  */
 async function viewPrescription(prescriptionId) {
-    console.log('👁️ Viewing prescription:', prescriptionId);
-    
     try {
         const url = `/api/prescriptions/${prescriptionId}/`;
         const response = await axios.get(url);
@@ -916,7 +938,7 @@ function generatePrescriptionItemsHTML(items) {
                         <th>Số lượng</th>
                         <th>Liều dùng</th>
                         <th>Tần suất</th>
-                        <th>Đường dùng</th>
+                        <th>Cách dùng</th>
                         <th>Số ngày</th>
                         <th>Hướng dẫn</th>
                         <th>Thành tiền</th>
@@ -1048,21 +1070,14 @@ function getStatusText(status) {
  * Edit prescription
  */
 async function editPrescription(prescriptionId) {
-    console.log('✏️ Editing prescription:', prescriptionId);
-    
     try {
         const url = `/api/prescriptions/${prescriptionId}/`;
         const response = await axios.get(url);
         const prescription = response.data;
         
-        console.log('Prescription to edit:', prescription);
-        
         // For now, only allow changing status and notes
-        const newStatus = prompt(
-            `Thay đổi trạng thái đơn thuốc?\n\nTrạng thái hiện tại: ${getStatusText(prescription.status)}\n\nNhập trạng thái mới:\n- DRAFT (Nháp)\n- ACTIVE (Có hiệu lực)\n- CANCELLED (Đã hủy)`,
-            prescription.status
-        );
-        
+        // Replace browser prompt with a simple inline update to ACTIVE status as example
+        const newStatus = 'ACTIVE';
         if (newStatus && newStatus !== prescription.status) {
             // Validate status
             const validStatuses = ['DRAFT', 'ACTIVE', 'CANCELLED'];
@@ -1076,7 +1091,6 @@ async function editPrescription(prescriptionId) {
             };
             
             const updateResponse = await axios.patch(url, updateData);
-            console.log('✅ Prescription updated');
             showAlert('Đơn thuốc đã được cập nhật', 'success');
             
             // Reload prescriptions
@@ -1093,15 +1107,11 @@ async function editPrescription(prescriptionId) {
  * Print prescription
  */
 async function printPrescription(prescriptionId) {
-    console.log('🖨️ Printing prescription:', prescriptionId);
-    
     try {
         // Get prescription details first
         const url = `/api/prescriptions/${prescriptionId}/`;
         const response = await axios.get(url);
         const prescription = response.data;
-        
-        console.log('Prescription data for printing:', prescription);
         
         // Generate printable HTML
         const printHTML = generatePrintableHTML(prescription);
@@ -1327,7 +1337,7 @@ function generatePrintableHTML(prescription) {
                         <th class="quantity-col">Số lượng</th>
                         <th>Liều dùng</th>
                         <th>Tần suất</th>
-                        <th>Đường dùng</th>
+                        <th>Cách dùng</th>
                         <th class="days-col">Số ngày</th>
                         <th>Hướng dẫn sử dụng</th>
                     </tr>
@@ -1405,14 +1415,11 @@ function generatePrintableHTML(prescription) {
  */
 async function deletePrescription(prescriptionId) {
     // Removed browser confirm - use UI modal if needed
-    
-    console.log('🗑️ Deleting prescription:', prescriptionId);
-    
+
     try {
         const url = `/api/prescriptions/${prescriptionId}/`;
         await axios.delete(url);
-        
-        console.log('✅ Prescription deleted');
+
         showAlert('Đơn thuốc đã được xóa', 'success');
         
         // Reload prescriptions
@@ -1517,10 +1524,39 @@ function showAlert(message, type = 'info') {
     // Use existing alert system from main.js if available
     if (window.AppAPI && window.AppAPI.showAlert) {
         window.AppAPI.showAlert(message, type);
-    } else {
-        // Fallback alert
-        alert(message);
+        return;
     }
-}
+    // Floating toast at top-right (no browser alert)
+    const containerId = 'hh-floating-notifications';
+    let container = document.getElementById(containerId);
+    if (!container) {
+        container = document.createElement('div');
+        container.id = containerId;
+        container.style.position = 'fixed';
+        container.style.top = '16px';
+        container.style.right = '16px';
+        container.style.zIndex = '1060';
+        container.style.maxWidth = '350px';
+        document.body.appendChild(container);
+    }
+    const typeClass = {
+        success: 'alert-success',
+        info: 'alert-info',
+        warning: 'alert-warning',
+        error: 'alert-danger',
+        danger: 'alert-danger'
+    }[type] || 'alert-info';
 
-console.log('🏥 Doctor Prescriptions Manager Loaded');
+    const toast = document.createElement('div');
+    toast.className = `alert ${typeClass} alert-dismissible fade show shadow`;
+    toast.style.minWidth = '320px';
+    toast.style.marginBottom = '8px';
+    toast.innerHTML = `
+        <div class="d-flex align-items-center">
+            <div class="flex-grow-1">${message}</div>
+            <button type="button" class="btn-close ms-2" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    container.appendChild(toast);
+    setTimeout(() => { if (toast.parentNode) toast.remove(); }, 5000);
+}

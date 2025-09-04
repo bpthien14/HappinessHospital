@@ -464,14 +464,11 @@
 <script>
 // Role-based JavaScript loading
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🏥 Prescriptions page loading...');
-    
     // Function to initialize interface based on role
     function initializeInterface() {
-        
+
         // Check user role and show appropriate interface
         if (isDoctorUser()) {
-            console.log('✅ Loading Doctor interface');
             document.getElementById('loading-spinner').style.display = 'none';
             document.getElementById('doctor-interface').style.display = 'block';
             
@@ -481,7 +478,6 @@ document.addEventListener('DOMContentLoaded', function() {
             document.head.appendChild(doctorScript);
             
         } else if (isPatientUser()) {
-            console.log('✅ Loading Patient interface');
             document.getElementById('loading-spinner').style.display = 'none';
             document.getElementById('patient-interface').style.display = 'block';
             
@@ -491,9 +487,6 @@ document.addEventListener('DOMContentLoaded', function() {
             document.head.appendChild(patientScript);
             
         } else {
-            console.log('⚠️ No appropriate role found, currentUser:', window.currentUser);
-            console.log('⚠️ isDoctorUser():', isDoctorUser());
-            console.log('⚠️ isPatientUser():', isPatientUser());
             showRoleError();
         }
     }
@@ -506,19 +499,15 @@ document.addEventListener('DOMContentLoaded', function() {
         waitAttempts++;
         
         if (window.currentUser) {
-            console.log('✅ currentUser is available, initializing interface');
             initializeInterface();
         } else if (waitAttempts >= maxAttempts) {
-            console.log('❌ Timeout waiting for currentUser, trying fallback');
             // Fallback: try to load from localStorage directly
             try {
                 const userData = localStorage.getItem('user_data');
                 if (userData) {
                     window.currentUser = JSON.parse(userData);
-                    console.log('✅ Loaded currentUser from localStorage:', window.currentUser);
                     initializeInterface();
                 } else {
-                    console.log('❌ No user data in localStorage');
                     showRoleError();
                 }
             } catch (e) {

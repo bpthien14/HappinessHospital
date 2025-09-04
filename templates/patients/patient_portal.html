@@ -202,6 +202,7 @@
                                     <th class="text-center">Khoa</th>
                                     <th class="text-center">Phòng khám</th>
                                     <th class="text-center">Trạng thái</th>
+                                    <th class="text-center">Thao tác</th>
                                 </tr>
                             </thead>
                             <tbody id="history-tbody">
@@ -919,7 +920,7 @@ async function loadMyAppointments() {
         const appointments = response.data.results || response.data;
         
         if (appointments.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Chưa có lịch hẹn nào</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Chưa có lịch hẹn nào</td></tr>';
             return;
         }
         
@@ -943,17 +944,40 @@ async function loadMyAppointments() {
             
 
             
+            const canPatientCancel = String(appt.status).toUpperCase() === 'SCHEDULED' && (appt.can_cancel !== false);
             row.innerHTML = `
                 <td class="text-center">${appt.appointment_date} ${appt.appointment_time}</td>
                 <td class="text-center">${doctorName}</td>
                 <td class="text-center">${departmentName}</td>
                 <td class="text-center">${roomLocation}</td>
                 <td class="text-center">${statusBadge[appt.status] || appt.status}</td>
+                <td class="text-center">
+                    ${canPatientCancel ? `<button class="btn btn-sm btn-outline-danger" onclick="cancelMyAppointment('${appt.id}')"><i class=\"fas fa-times\"></i> Hủy</button>` : '<span class="text-muted small">-</span>'}
+                </td>
             `;
             tbody.appendChild(row);
         });
     } catch (error) {
         tbody.innerHTML = '<tr><td colspan="5" class="text-danger text-center">Lỗi tải lịch sử</td></tr>';
+    }
+}
+
+// Bệnh nhân hủy lịch hẹn của chính mình khi còn ở trạng thái Đã đặt
+async function cancelMyAppointment(appointmentId) {
+    const btns = document.querySelectorAll(`button[onclick="cancelMyAppointment('${appointmentId}')"]`);
+    btns.forEach(b => b.disabled = true);
+    try {
+        const token = localStorage.getItem('access_token');
+        await axios.post(`/api/appointments/${appointmentId}/cancel/`, { reason: 'Bệnh nhân tự hủy trên portal' }, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        showAlert('Hủy lịch hẹn thành công', 'success');
+        await loadMyAppointments();
+    } catch (error) {
+        console.error('Cancel appointment error:', error);
+        showAlert(friendlyError(error?.response?.data, 'Không thể hủy lịch hẹn'), 'danger');
+    } finally {
+        btns.forEach(b => b.disabled = false);
     }
 }
 
@@ -1126,8 +1150,6 @@ async function loadMyPayments() {
         if (payments.length === 0 && displayPrescriptions.length === 0) {
             tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Chưa có đơn thuốc nào</td></tr>';
         }
-
-        console.log('✅ Payments loaded successfully');
 
     } catch (error) {
         console.error('❌ Error loading payments:', error);
@@ -1609,12 +1631,9 @@ document.getElementById('pp-save-profile').addEventListener('click', async funct
 
 // Safe initialization to wait for axios
 function safeInitialize() {
-    console.log('🔄 Checking if axios is ready...');
     if (typeof axios !== 'undefined') {
-        console.log('✅ Axios is ready, initializing portal...');
         initializePortal();
     } else {
-        console.log('⏳ Axios not ready, waiting...');
         setTimeout(safeInitialize, 100);
     }
 }
