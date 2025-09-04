@@ -883,7 +883,7 @@ async function performDeletePatient(patientId) {
 }
 
 function viewMedicalRecords(patientId) {
-    console.log('View medical records:', patientId);
+    // TODO: Implement medical records view
 }
 
 // ===== View Patient Modal =====

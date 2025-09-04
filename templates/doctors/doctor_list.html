@@ -143,8 +143,23 @@
                             <input type="password" class="form-control" id="password" name="password" required>
                         </div>
                         <div class="col-md-6">
-                            <label for="phone_number" class="form-label">Số điện thoại</label>
-                            <input type="tel" class="form-control" id="phone_number" name="phone_number">
+                            <label for="phone_number" class="form-label">Số điện thoại <span class="text-danger">*</span></label>
+                            <input type="tel" class="form-control" id="phone_number" name="phone_number" required>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="date_of_birth" class="form-label">Ngày sinh</label>
+                            <input type="date" class="form-control" id="date_of_birth" name="date_of_birth">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="gender" class="form-label">Giới tính</label>
+                            <select class="form-select" id="gender" name="gender">
+                                <option value="M">Nam</option>
+                                <option value="F">Nữ</option>
+                                <option value="O" selected>Khác</option>
+                            </select>
                         </div>
                     </div>
 
@@ -156,16 +171,7 @@
                         </div>
                     </div>
                     
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label for="employee_id" class="form-label">Mã nhân viên <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="employee_id" name="employee_id" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="license_number" class="form-label">Số chứng chỉ hành nghề <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="license_number" name="license_number" required>
-                        </div>
-                    </div>
+                    <!-- Mã nhân viên và chứng chỉ sẽ được hệ thống tự sinh -->
                     
                     <div class="row mb-3">
                         <div class="col-md-6">
@@ -296,6 +302,21 @@
                         </div>
                     </div>
 
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="edit-dob" class="form-label">Ngày sinh</label>
+                            <input type="date" class="form-control" id="edit-dob" name="date_of_birth">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="edit-gender" class="form-label">Giới tính</label>
+                            <select class="form-select" id="edit-gender" name="gender">
+                                <option value="M">Nam</option>
+                                <option value="F">Nữ</option>
+                                <option value="O">Khác</option>
+                            </select>
+                        </div>
+                    </div>
+
                     <!-- Doctor Profile Information -->
                     <div class="row mb-3">
                         <div class="col-12">
@@ -372,7 +393,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                    <button type="submit" class="btn btn-primary">
+                    <button type="submit" class="btn btn-primary" id="edit-doctor-save-btn" disabled>
                         <i class="fas fa-save"></i> Cập nhật
                     </button>
                 </div>
@@ -481,115 +502,6 @@
     </div>
 </div>
 
-<!-- Edit Doctor Modal -->
-<div class="modal fade" id="editDoctorModal" tabindex="-1" aria-labelledby="editDoctorModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="editDoctorModalLabel">
-                    <i class="fas fa-edit"></i> Chỉnh sửa thông tin bác sĩ
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form id="edit-doctor-form">
-                <div class="modal-body">
-                    <input type="hidden" id="edit-doctor-id" name="id">
-                    
-                    <!-- User Information -->
-                    <div class="row mb-3">
-                        <div class="col-12">
-                            <h6 class="text-primary"><i class="fas fa-user"></i> Thông tin cá nhân</h6>
-                            <hr>
-                        </div>
-                    </div>
-                    
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label for="edit-first-name" class="form-label">Họ <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="edit-first-name" name="first_name" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="edit-last-name" class="form-label">Tên <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="edit-last-name" name="last_name" required>
-                        </div>
-                    </div>
-                    
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label for="edit-email" class="form-label">Email <span class="text-danger">*</span></label>
-                            <input type="email" class="form-control" id="edit-email" name="email" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="edit-phone" class="form-label">Số điện thoại <span class="text-danger">*</span></label>
-                            <input type="tel" class="form-control" id="edit-phone" name="phone_number" required>
-                        </div>
-                    </div>
-                    
-                    <!-- Professional Information -->
-                    <div class="row mb-3">
-                        <div class="col-12">
-                            <h6 class="text-primary"><i class="fas fa-stethoscope"></i> Thông tin chuyên môn</h6>
-                            <hr>
-                        </div>
-                    </div>
-                    
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label for="edit-license-number" class="form-label">Số chứng chỉ hành nghề <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="edit-license-number" name="license_number" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="edit-degree" class="form-label">Bằng cấp <span class="text-danger">*</span></label>
-                            <select class="form-select" id="edit-degree" name="degree" required>
-                                <option value="">Chọn bằng cấp</option>
-                                <option value="BACHELOR">Bác sĩ</option>
-                                <option value="MASTER">Thạc sĩ</option>
-                                <option value="DOCTOR">Tiến sĩ</option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label for="edit-department" class="form-label">Khoa <span class="text-danger">*</span></label>
-                            <select class="form-select" id="edit-department" name="department" required>
-                                <option value="">Chọn khoa</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="edit-experience-years" class="form-label">Số năm kinh nghiệm</label>
-                            <input type="number" class="form-control" id="edit-experience-years" name="experience_years" min="0">
-                        </div>
-                    </div>
-                    
-                    <div class="row mb-3">
-                        <div class="col-12">
-                            <label for="edit-specialization" class="form-label">Chuyên khoa</label>
-                            <textarea class="form-control" id="edit-specialization" name="specialization" rows="2"></textarea>
-                        </div>
-                    </div>
-                    
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="edit-is-active" name="is_active" value="true">
-                                <label class="form-check-label" for="edit-is-active">
-                                    Đang hoạt động
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save"></i> Cập nhật
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
 {% endblock %}
 
 {% block extra_js %}

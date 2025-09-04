@@ -208,7 +208,6 @@ async function checkTokenAndRedirect() {
             }
         } catch (apiError) {
             // Token is invalid/expired, clear localStorage and stay on login page
-            console.log('Token expired or invalid, clearing storage');
             localStorage.removeItem('access_token');
             localStorage.removeItem('refresh_token');
             localStorage.removeItem('user_data');
