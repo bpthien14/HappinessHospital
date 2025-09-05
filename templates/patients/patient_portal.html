@@ -1069,12 +1069,11 @@ async function loadMyPayments() {
                 </td>
                 <td class="text-center">${(payment.amount || prescription?.patient_payment_amount || prescription?.total_amount || 0).toLocaleString()} VNĐ</td>
                 <td class="text-center"><span class="badge ${getPaymentStatusBadge(isPaid ? 'paid' : (eligible ? payment.status : 'not_allowed'))}">${isPaid ? 'Đã thanh toán' : (eligible ? getPaymentStatusText(payment.status) : 'Không khả dụng')}</span></td>
-                <td class="text-center">
+                <td class="text-center vertical-center">
                     <div class="btn-group-vertical btn-group-sm">
                         <button class="btn btn-outline-info btn-sm" onclick="viewPrescriptionDetail('${payment.prescription_id || payment.prescription}')">
                             <i class="fas fa-eye"></i> Chi tiết
                         </button>
-                        ${isPaid ? '<span class="text-success small"><i class="fas fa-check"></i> Đã thanh toán</span>' : (eligible ? getPaymentAction(payment) : '<span class="text-muted small">Không khả dụng</span>')}
                     </div>
                 </td>
             `;
@@ -1392,9 +1391,9 @@ async function payWithVNPay(prescriptionId) {
 
         const vnpayData = response.data;
 
-        if (vnpayData.payment_url) {
+        if (vnpayData.redirect_url) {
             // Redirect to VNPay
-            window.location.href = vnpayData.payment_url;
+            window.location.href = vnpayData.redirect_url;
         } else {
             throw new Error('Không nhận được URL thanh toán từ VNPay');
         }

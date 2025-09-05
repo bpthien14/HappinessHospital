@@ -17,7 +17,7 @@ class VNPayService:
         # Sử dụng trang vpcpay để hiển thị QR (đúng trải nghiệm thanh toán của VNPAY)
         # Thay vì gọi trực tiếp endpoint /paymentv2/qr
         self.vnp_QR_Url = self.vnp_Url
-        self.vnp_ReturnUrl = getattr(settings, 'VNPAY_RETURN_URL', None) or 'http://localhost:8000/api/payments/vnpay_return/'
+        self.vnp_ReturnUrl = getattr(settings, 'VNPAY_RETURN_URL', None) or 'http://localhost:8000/api/vnpay_return/'
         # IPN URL không phải là tham số bắt buộc gửi lên VNPAY; hệ thống VNPAY sẽ dùng cấu hình tại merchant portal
         self.vnp_IpnUrl = getattr(settings, 'VNPAY_IPN_URL', None)
         try:

@@ -280,5 +280,5 @@ LOGGING = {
 # VNPAY Configuration
 VNPAY_TMN_CODE = os.getenv('VNPAY_TMN_CODE')
 VNPAY_HASH_SECRET = os.getenv('VNPAY_HASH_SECRET')
-VNPAY_RETURN_URL = os.getenv('VNPAY_RETURN_URL')
+VNPAY_RETURN_URL = 'http://localhost:8000/api/vnpay_return/'
 VNPAY_IPN_URL = os.getenv('VNPAY_IPN_URL')
