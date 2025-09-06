@@ -946,12 +946,12 @@ async function loadMyAppointments() {
             
             const canPatientCancel = String(appt.status).toUpperCase() === 'SCHEDULED' && (appt.can_cancel !== false);
             row.innerHTML = `
-                <td class="text-center">${appt.appointment_date} ${appt.appointment_time}</td>
-                <td class="text-center">${doctorName}</td>
-                <td class="text-center">${departmentName}</td>
-                <td class="text-center">${roomLocation}</td>
-                <td class="text-center">${statusBadge[appt.status] || appt.status}</td>
-                <td class="text-center">
+                <td class="text-center vertical-middle">${appt.appointment_date} ${appt.appointment_time}</td>
+                <td class="text-center vertical-middle">${doctorName}</td>
+                <td class="text-center vertical-middle">${departmentName}</td>
+                <td class="text-center vertical-middle">${roomLocation}</td>
+                <td class="text-center vertical-middle">${statusBadge[appt.status] || appt.status}</td>
+                <td class="text-center vertical-middle">
                     ${canPatientCancel ? `<button class="btn btn-sm btn-outline-danger" onclick="cancelMyAppointment('${appt.id}')"><i class=\"fas fa-times\"></i> Hủy</button>` : '<span class="text-muted small">-</span>'}
                 </td>
             `;
@@ -1062,14 +1062,14 @@ async function loadMyPayments() {
             const row = document.createElement('tr');
             const isPaid = payment.status?.toLowerCase() === 'paid';
             row.innerHTML = `
-                <td class="text-center">${formatDate(prescription?.prescription_date || payment.created_at)}</td>
+                <td class="text-center vertical-middle">${formatDate(prescription?.prescription_date || payment.created_at)}</td>
                 <td>
                     <div>Đơn thuốc - ${payment.prescription_number}</div>
                     <div class="small text-muted">${prescription?.diagnosis || ''}</div>
                 </td>
-                <td class="text-center">${(payment.amount || prescription?.patient_payment_amount || prescription?.total_amount || 0).toLocaleString()} VNĐ</td>
-                <td class="text-center"><span class="badge ${getPaymentStatusBadge(isPaid ? 'paid' : (eligible ? payment.status : 'not_allowed'))}">${isPaid ? 'Đã thanh toán' : (eligible ? getPaymentStatusText(payment.status) : 'Không khả dụng')}</span></td>
-                <td class="text-center vertical-center">
+                <td class="text-center vertical-middle">${(payment.amount || prescription?.patient_payment_amount || prescription?.total_amount || 0).toLocaleString()} VNĐ</td>
+                <td class="text-center vertical-middle"><span class="badge ${getPaymentStatusBadge(isPaid ? 'paid' : (eligible ? payment.status : 'not_allowed'))}">${isPaid ? 'Đã thanh toán' : (eligible ? getPaymentStatusText(payment.status) : 'Không khả dụng')}</span></td>
+                <td class="text-center vertical-middle">
                     <div class="btn-group-vertical btn-group-sm">
                         <button class="btn btn-outline-info btn-sm" onclick="viewPrescriptionDetail('${payment.prescription_id || payment.prescription}')">
                             <i class="fas fa-eye"></i> Chi tiết
@@ -1277,15 +1277,15 @@ async function viewPrescriptionDetail(prescriptionId) {
             prescription.items.forEach(item => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td>
-                        <div class="fw-bold">${item.drug?.name || 'N/A'}</div>
+                    <td class="vertical-middle">
+                        <div class="fw-bold">${item.drug_name || 'N/A'}</div>
                         <div class="small text-muted">${item.drug?.generic_name || ''}</div>
                     </td>
-                    <td class="text-center">${item.quantity || 0}</td>
-                    <td class="text-center">${item.dosage_per_time || 'N/A'}</td>
-                    <td class="text-center">${getFrequencyText(item.frequency) || 'N/A'}</td>
-                    <td class="text-center">${(item.unit_price || 0).toLocaleString()} VNĐ</td>
-                    <td class="text-center fw-bold">${(item.total_price || 0).toLocaleString()} VNĐ</td>
+                    <td class="text-center vertical-middle">${item.quantity || 0}</td>
+                    <td class="text-center vertical-middle">${item.dosage_per_time || 'N/A'}</td>
+                    <td class="text-center vertical-middle">${getFrequencyText(item.frequency) || 'N/A'}</td>
+                    <td class="text-center vertical-middle">${(item.unit_price || 0).toLocaleString()} VNĐ</td>
+                    <td class="text-center fw-bold vertical-middle">${(item.total_price || 0).toLocaleString()} VNĐ</td>
                 `;
                 itemsContainer.appendChild(row);
             });

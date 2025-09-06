@@ -170,7 +170,7 @@ class AppointmentViewSet(ModelViewSet):
     permission_classes = [HasPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['appointment_number', 'patient__full_name', 'patient__patient_code', 'patient__phone_number']
-    filterset_fields = ['status', 'priority', 'appointment_type', 'doctor', 'department']
+    filterset_fields = ['status', 'priority', 'appointment_type', 'doctor', 'department', 'appointment_date']
     ordering_fields = ['appointment_date', 'appointment_time', 'created_at']
     ordering = ['-appointment_date', '-appointment_time']
     

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Patients Chart</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+    <h1>Test Patients API for Chart</h1>
+    <div id="output"></div>
+    
+    <script>
+        async function testPatientsAPI() {
+            try {
+                console.log('🔍 Testing patients API...');
+                
+                const response = await axios.get('/api/patients/?page_size=1000&ordering=created_at');
+                const patients = response.data?.results || [];
+                
+                console.log(`📊 Found ${patients.length} total patients`);
+                console.log('📋 Patients data:', patients);
+                
+                // Test monthly grouping logic
+                const months = [];
+                const data = [];
+                
+                for (let i = 5; i >= 0; i--) {
+                    const date = new Date();
+                    date.setMonth(date.getMonth() - i);
+                    
+                    const year = date.getFullYear();
+                    const month = date.getMonth() + 1;
+                    const monthName = date.toLocaleDateString('vi-VN', { month: 'short' });
+                    
+                    months.push(monthName);
+                    
+                    // Count patients created in this month
+                    const monthlyPatients = patients.filter(patient => {
+                        if (!patient.created_at) {
+                            console.log('⚠️ Patient without created_at:', patient);
+                            return false;
+                        }
+                        
+                        const createdDate = new Date(patient.created_at);
+                        const isMatch = createdDate.getFullYear() === year && 
+                                       createdDate.getMonth() + 1 === month;
+                        
+                        if (isMatch) {
+                            console.log(`✅ Patient "${patient.full_name}" matches ${monthName} ${year}: ${patient.created_at}`);
+                        }
+                        
+                        return isMatch;
+                    });
+                    
+                    const monthlyCount = monthlyPatients.length;
+                    data.push(monthlyCount);
+                    console.log(`📊 ${monthName} ${year}: ${monthlyCount} patients`);
+                }
+                
+                console.log('📈 Final chart data:', { labels: months, data: data });
+                
+                // Display results
+                document.getElementById('output').innerHTML = `
+                    <h2>Results:</h2>
+                    <p><strong>Total patients:</strong> ${patients.length}</p>
+                    <p><strong>Chart labels:</strong> ${months.join(', ')}</p>
+                    <p><strong>Chart data:</strong> ${data.join(', ')}</p>
+                    <h3>Patients details:</h3>
+                    <ul>
+                        ${patients.map(p => `<li>${p.full_name} - Created: ${p.created_at}</li>`).join('')}
+                    </ul>
+                `;
+                
+            } catch (error) {
+                console.error('❌ Error:', error);
+                document.getElementById('output').innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+            }
+        }
+        
+        // Run test when page loads
+        testPatientsAPI();
+    </script>
+</body>
+</html>

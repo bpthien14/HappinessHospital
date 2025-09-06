@@ -106,3 +106,7 @@ body {
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
+
+.vertical-middle{
+    vertical-align: middle;
+}
