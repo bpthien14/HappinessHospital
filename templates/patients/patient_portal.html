@@ -1645,9 +1645,133 @@ if (typeof HospitalApp !== 'undefined' && HospitalApp.onAxiosReady) {
     safeInitialize();
 }
 
+// Check payment success parameters and show success dialog
+function checkPaymentSuccess() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const paymentStatus = urlParams.get('payment');
+    const prescriptionId = urlParams.get('prescription');
+    
+    if (paymentStatus === 'success' && prescriptionId) {
+        showPaymentSuccessDialog(prescriptionId);
+        // Clean up URL parameters
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+    }
+}
+
+// Show payment success dialog
+async function showPaymentSuccessDialog(prescriptionId) {
+    try {
+        // Fetch prescription details
+        const response = await axios.get(`/api/prescriptions/${prescriptionId}/`);
+        const prescription = response.data;
+        
+        // Create success dialog
+        const successDialog = document.createElement('div');
+        successDialog.className = 'modal fade';
+        successDialog.id = 'paymentSuccessModal';
+        successDialog.setAttribute('data-bs-backdrop', 'static');
+        successDialog.setAttribute('data-bs-keyboard', 'false');
+        successDialog.innerHTML = `
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-body text-center py-5">
+                        <div class="mb-4">
+                            <i class="fas fa-check-circle text-success" style="font-size: 4rem;"></i>
+                        </div>
+                        <h4 class="text-success mb-3">Thanh toán thành công!</h4>
+                        <p class="text-muted mb-3">
+                            Cảm ơn bạn đã thanh toán đơn thuốc <strong>${prescription.prescription_number}</strong>
+                        </p>
+                        <p class="text-muted mb-4">
+                            Số tiền: <strong class="text-primary">${(prescription.patient_payment_amount || prescription.total_amount || 0).toLocaleString()} VNĐ</strong>
+                        </p>
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Đơn thuốc của bạn đã được xác nhận thanh toán và sẽ được chuẩn bị sớm nhất.
+                        </div>
+                        <button type="button" class="btn btn-success btn-lg" data-bs-dismiss="modal">
+                            <i class="fas fa-check me-2"></i>Tiếp tục
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Add to body and show
+        document.body.appendChild(successDialog);
+        const modal = new bootstrap.Modal(successDialog);
+        modal.show();
+        
+        // Remove modal from DOM when hidden
+        successDialog.addEventListener('hidden.bs.modal', function() {
+            document.body.removeChild(successDialog);
+        });
+        
+        // Switch to payment tab
+        const paymentTab = document.querySelector('[data-tab="payment"]');
+        if (paymentTab) {
+            paymentTab.click();
+        }
+        
+    } catch (error) {
+        console.error('Error loading prescription details:', error);
+        // Show generic success dialog if prescription fetch fails
+        showGenericPaymentSuccessDialog();
+    }
+}
+
+// Show generic payment success dialog (when prescription details can't be fetched)
+function showGenericPaymentSuccessDialog() {
+    const successDialog = document.createElement('div');
+    successDialog.className = 'modal fade';
+    successDialog.id = 'paymentSuccessModal';
+    successDialog.setAttribute('data-bs-backdrop', 'static');
+    successDialog.setAttribute('data-bs-keyboard', 'false');
+    successDialog.innerHTML = `
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body text-center py-5">
+                    <div class="mb-4">
+                        <i class="fas fa-check-circle text-success" style="font-size: 4rem;"></i>
+                    </div>
+                    <h4 class="text-success mb-3">Thanh toán thành công!</h4>
+                    <p class="text-muted mb-3">
+                        Cảm ơn bạn đã thanh toán đơn thuốc
+                    </p>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Đơn thuốc của bạn đã được xác nhận thanh toán và sẽ được chuẩn bị sớm nhất.
+                    </div>
+                    <button type="button" class="btn btn-success btn-lg" data-bs-dismiss="modal">
+                        <i class="fas fa-check me-2"></i>Tiếp tục
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Add to body and show
+    document.body.appendChild(successDialog);
+    const modal = new bootstrap.Modal(successDialog);
+    modal.show();
+    
+    // Remove modal from DOM when hidden
+    successDialog.addEventListener('hidden.bs.modal', function() {
+        document.body.removeChild(successDialog);
+    });
+    
+    // Switch to payment tab
+    const paymentTab = document.querySelector('[data-tab="payment"]');
+    if (paymentTab) {
+        paymentTab.click();
+    }
+}
+
 // Restore active tab when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
     restoreActiveTab();
+    checkPaymentSuccess();
 });
 </script>
 
