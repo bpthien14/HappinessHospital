@@ -28,7 +28,7 @@ function initializeDashboard() {
 
     dashboardInitialized = true;
 
-    // Check and display new account info
+    // Check and display ne        console.log('📊 Found ' + patients.length + ' total patients');
     checkNewAccountInfo();
 
     // Load all dashboard data
@@ -649,6 +649,10 @@ async function refreshCharts() {
     }
 }
 
+function generateReport() {
+    showAlert('Tính năng báo cáo đang được phát triển', 'info');
+}
+
 async function getAppointmentsWeeklyData() {
     // Generate data for all days in current month
     const days = [];
@@ -687,6 +691,74 @@ async function getAppointmentsWeeklyData() {
     
     console.log('📊 Monthly appointments data:', { labels: days, data: data });
     return { labels: days, data: data };
+}
+
+async function getPatientsMonthlyData() {
+    try {
+        console.log('📅 Getting all patients and grouping by month...');
+        
+        // Get all patients
+        const response = await axios.get('/api/patients/?page_size=1000&ordering=created_at');
+        const patients = response.data?.results || [];
+        
+        console.log(`� Found ${patients.length} total patients`);
+        
+        // Create last 6 months data
+        const months = [];
+        const data = [];
+        
+        for (let i = 5; i >= 0; i--) {
+            const date = new Date();
+            date.setMonth(date.getMonth() - i);
+            
+            const year = date.getFullYear();
+            const month = date.getMonth() + 1;
+            const monthName = date.toLocaleDateString('vi-VN', { month: 'short' });
+            
+            months.push(monthName);
+            
+            // Count patients created in this month - simplified
+            let monthlyCount = 0;
+            for (let j = 0; j < patients.length; j++) {
+                const patient = patients[j];
+                if (patient && patient.created_at) {
+                    const createdDate = new Date(patient.created_at);
+                    if (createdDate.getFullYear() === year && 
+                        createdDate.getMonth() + 1 === month) {
+                        monthlyCount++;
+                    }
+                }
+            }
+            
+            data.push(monthlyCount);
+            console.log(`📊 ${monthName} ${year}: ${monthlyCount} patients`);
+        }
+        
+            }
+    
+    console.log('� Monthly appointments data:', { labels: days, data: data });
+    return { labels: days, data: data };
+}
+
+function handleApiError(error, context) {
+        return { labels: months, data: data };
+        
+    } catch (error) {
+        console.error('❌ Error getting patients monthly data:', error);
+        // Fallback to empty data
+        const months = [];
+        const data = [];
+        
+        for (let i = 5; i >= 0; i--) {
+            const date = new Date();
+            date.setMonth(date.getMonth() - i);
+            const monthName = date.toLocaleDateString('vi-VN', { month: 'short' });
+            months.push(monthName);
+            data.push(0);
+        }
+        
+        return { labels: months, data: data };
+    }
 }
 
 function handleApiError(error, context) {
@@ -752,41 +824,74 @@ function showAlert(message, type = 'info') {
             
             setTimeout(() => {
                 if (alertDiv.parentNode) {
-                    alertDiv.parentNode.removeChild(alertDiv);
+                    alertDiv.remove();
                 }
-            }, 3000);
+            }, 5000);
         } catch (error) {
-            console.error('Error showing alert:', error);
+            console.error('Error inserting alert:', error);
+            document.body.appendChild(alertDiv);
         }
     } else {
-        alert(message);
+        console.warn('No container found for alert, appending to body');
+        document.body.appendChild(alertDiv);
     }
 }
 
 function formatDate(dateString) {
     if (!dateString) return '-';
-    
     try {
         const date = new Date(dateString);
         return date.toLocaleDateString('vi-VN');
     } catch (error) {
-        return '-';
+        console.error('Error formatting date:', error);
+        return dateString;
     }
 }
 
+// Check and display new account information
 function checkNewAccountInfo() {
     try {
-        const urlParams = new URLSearchParams(window.location.search);
-        const accountCreated = urlParams.get('account_created');
-        
-        if (accountCreated === 'true') {
-            showAlert('Tài khoản đã được tạo thành công! Hãy cập nhật thông tin cá nhân của bạn.', 'success');
-            
-            // Remove the parameter from URL
-            const newUrl = window.location.pathname;
-            window.history.replaceState({}, '', newUrl);
+        const accountInfo = localStorage.getItem('new_account_info');
+        if (accountInfo) {
+            const info = JSON.parse(accountInfo);
+
+            // Display account info
+            document.getElementById('account-fullname').textContent = info.fullName || '-';
+            document.getElementById('account-phone').textContent = info.phoneNumber || '-';
+            document.getElementById('account-username').textContent = info.username || '-';
+            document.getElementById('account-password').textContent = info.password || '-';
+
+            // Show the account info section
+            document.getElementById('new-account-info').style.display = 'block';
+
+            // Auto-hide after 30 seconds
+            setTimeout(() => {
+                const alertElement = document.getElementById('new-account-info');
+                if (alertElement) {
+                    alertElement.style.display = 'none';
+                }
+            }, 30000);
+
+            // Clear the stored info
+            localStorage.removeItem('new_account_info');
         }
     } catch (error) {
-        console.error('Error checking new account info:', error);
+        console.error('Error displaying new account info:', error);
     }
 }
+
+// Cleanup charts when leaving the page
+window.addEventListener('beforeunload', function() {
+    Object.values(charts).forEach(chart => {
+        if (chart && typeof chart.destroy === 'function') {
+            chart.destroy();
+        }
+    });
+});
+
+// Auto refresh data every 5 minutes
+setInterval(() => {
+    if (dashboardInitialized && document.visibilityState === 'visible') {
+        loadAllDashboardData();
+    }
+}, 5 * 60 * 1000);

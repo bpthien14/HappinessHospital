@@ -38,7 +38,7 @@ class PatientViewSet(ModelViewSet):
     serializer_class = PatientSerializer
     permission_classes = [HasPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['gender', 'province', 'has_insurance', 'is_active']
+    filterset_fields = ['gender', 'province', 'has_insurance', 'is_active', 'created_at']
     search_fields = ['full_name', 'patient_code', 'phone_number', 'citizen_id']
     ordering_fields = ['full_name', 'created_at', 'date_of_birth']
     ordering = ['-created_at']

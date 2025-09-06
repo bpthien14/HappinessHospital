@@ -449,9 +449,6 @@ function createPrescriptionRow(prescription) {
                     <button class="btn btn-sm btn-outline-info" onclick="viewPrescription('${prescription.id}')" title="Xem chi tiết">
                         <i class="fas fa-eye"></i>
                     </button>
-                    <button class="btn btn-sm btn-outline-warning" onclick="editPrescription('${prescription.id}')" title="Chỉnh sửa">
-                        <i class="fas fa-edit"></i>
-                    </button>
                     <button class="btn btn-sm btn-outline-primary" onclick="printPrescription('${prescription.id}')" title="In đơn">
                         <i class="fas fa-print"></i>
                     </button>

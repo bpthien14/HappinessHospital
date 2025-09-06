@@ -1,12 +1,260 @@
 {% extends 'base/base.html' %}
+{% load static %}
 
 {% block title %}Dashboard - {{ block.super }}{% endblock %}
 
+{% block extra_css %}
+<style>
+    .dashboard-header {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        color: white;
+        padding: 2rem 0;
+        margin: -1.5rem -1.5rem 2rem -1.5rem;
+        border-radius: 0 0 15px 15px;
+    }
+    
+    .stat-card {
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        transition: all 0.3s ease;
+        overflow: hidden;
+        position: relative;
+        background: white;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+    }
+    
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 4px;
+        background: linear-gradient(90deg, var(--card-gradient-start), var(--card-gradient-end));
+    }
+    
+    .stat-card.card-primary {
+        --card-gradient-start: #4facfe;
+        --card-gradient-end: #00f2fe;
+    }
+    
+    .stat-card.card-success {
+        --card-gradient-start: #43e97b;
+        --card-gradient-end: #38f9d7;
+    }
+    
+    .stat-card.card-info {
+        --card-gradient-start: #667eea;
+        --card-gradient-end: #764ba2;
+    }
+    
+    .stat-card.card-warning {
+        --card-gradient-start: #ffecd2;
+        --card-gradient-end: #fcb69f;
+    }
+    
+    .stat-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin-right: 1rem;
+    }
+    
+    .stat-number {
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: #1a202c;
+        margin-bottom: 0;
+    }
+    
+    .stat-label {
+        color: #4a5568;
+        font-weight: 500;
+        margin-bottom: 0;
+    }
+    
+    .chart-card {
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        transition: all 0.3s ease;
+        background: white;
+    }
+    
+    .chart-card:hover {
+        box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+    }
+    
+    .quick-action-btn {
+        border: none;
+        border-radius: 12px;
+        padding: 1.5rem;
+        text-align: center;
+        transition: all 0.3s ease;
+        background: white;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        text-decoration: none;
+        color: #2d3748;
+        display: block;
+        height: 100%;
+    }
+    
+    .quick-action-btn:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+        color: #1a202c;
+        text-decoration: none;
+        background: linear-gradient(135deg, #f7fafc, #edf2f7);
+    }
+    
+    .quick-action-icon {
+        font-size: 2.5rem;
+        margin-bottom: 1rem;
+        color: #4facfe;
+    }
+    
+    .activity-item {
+        padding: 1rem;
+        border-left: 3px solid #e2e8f0;
+        margin-bottom: 1rem;
+        background: #f8fafc;
+        border-radius: 0 8px 8px 0;
+    }
+    
+    .activity-item.recent {
+        border-left-color: #43e97b;
+        background: linear-gradient(135deg, #f0fff4, #e6fffa);
+    }
+    
+    .activity-time {
+        color: #718096;
+        font-size: 0.875rem;
+    }
+    
+    .loading-spinner {
+        display: inline-block;
+        width: 1.5rem;
+        height: 1.5rem;
+        border: 2px solid #e2e8f0;
+        border-radius: 50%;
+        border-top-color: #4facfe;
+        animation: spin 1s ease-in-out infinite;
+    }
+    
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+    
+    .section-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #1a202c;
+        margin-bottom: 1.5rem;
+        position: relative;
+        padding-left: 1rem;
+    }
+    
+    .section-title::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 4px;
+        background: linear-gradient(135deg, #4facfe, #00f2fe);
+        border-radius: 2px;
+    }
+    
+    .chart-loading {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.95);
+        z-index: 10;
+        border-radius: 8px;
+    }
+    
+    /* Mobile responsive */
+    @media (max-width: 768px) {
+        .dashboard-header {
+            margin: -1rem -1rem 2rem -1rem;
+            padding: 1.5rem 0;
+        }
+        
+        .dashboard-header h1 {
+            font-size: 1.5rem;
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+        }
+        
+        .stat-icon {
+            width: 50px;
+            height: 50px;
+            font-size: 1.2rem;
+        }
+        
+        .quick-action-btn {
+            padding: 1rem;
+        }
+        
+        .quick-action-icon {
+            font-size: 2rem;
+        }
+        
+        .section-title {
+            font-size: 1.1rem;
+            padding-left: 0.8rem;
+        }
+        
+        .section-title::before {
+            width: 3px;
+        }
+    }
+    
+    /* Small mobile */
+    @media (max-width: 576px) {
+        .stat-card .card-body {
+            padding: 1rem;
+        }
+        
+        .stat-number {
+            font-size: 1.8rem;
+        }
+        
+        .stat-label {
+            font-size: 0.875rem;
+        }
+        
+        .chart-card .card-body {
+            padding: 1rem;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="row mb-4">
-    <div class="col-12">
-        <h2><i class="fas fa-tachometer-alt"></i> Dashboard</h2>
-        <p class="text-muted">Tổng quan hệ thống quản lý bệnh viện</p>
+<!-- Dashboard Header -->
+<div class="dashboard-header">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-12">
+                <h1 class="mb-2"><i class="fas fa-tachometer-alt me-3"></i>Dashboard</h1>
+                <p class="mb-0 opacity-75">Tổng quan hệ thống quản lý bệnh viện - Happiness Hospital</p>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -37,124 +285,213 @@
 </div>
 
 <!-- Statistics Cards -->
-<div class="row mb-4" id="stats-cards">
-    <div class="col-md-3 mb-3">
-        <div class="card bg-primary text-white">
+<div class="row mb-5" id="stats-cards">
+    <div class="col-lg-3 col-md-6 mb-4">
+        <div class="card stat-card card-primary">
             <div class="card-body">
                 <div class="d-flex align-items-center">
-                    <i class="fas fa-users fa-2x me-3"></i>
-                    <div>
-                        <h5 class="card-title mb-0" id="total-patients">-</h5>
-                        <p class="card-text">Tổng bệnh nhân</p>
+                    <div class="stat-icon" style="background: rgba(79, 172, 254, 0.1); color: #4facfe;">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <h3 class="stat-number" id="total-patients">
+                            <span class="loading-spinner"></span>
+                        </h3>
+                        <p class="stat-label">Tổng bệnh nhân</p>
                     </div>
                 </div>
             </div>
         </div>
     </div>
     
-    <div class="col-md-3 mb-3">
-        <div class="card bg-success text-white">
+    <div class="col-lg-3 col-md-6 mb-4">
+        <div class="card stat-card card-success">
             <div class="card-body">
                 <div class="d-flex align-items-center">
-                    <i class="fas fa-user-plus fa-2x me-3"></i>
-                    <div>
-                        <h5 class="card-title mb-0" id="new-patients">-</h5>
-                        <p class="card-text">BN mới tháng này</p>
+                    <div class="stat-icon" style="background: rgba(67, 233, 123, 0.1); color: #43e97b;">
+                        <i class="fas fa-user-plus"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <h3 class="stat-number" id="new-patients">
+                            <span class="loading-spinner"></span>
+                        </h3>
+                        <p class="stat-label">BN mới tháng này</p>
                     </div>
                 </div>
             </div>
         </div>
     </div>
     
-    <div class="col-md-3 mb-3">
-        <div class="card bg-info text-white">
+    <div class="col-lg-3 col-md-6 mb-4">
+        <div class="card stat-card card-info">
             <div class="card-body">
                 <div class="d-flex align-items-center">
-                    <i class="fas fa-calendar-alt fa-2x me-3"></i>
-                    <div>
-                        <h5 class="card-title mb-0" id="today-appointments">-</h5>
-                        <p class="card-text">Lịch khám hôm nay</p>
+                    <div class="stat-icon" style="background: rgba(102, 126, 234, 0.1); color: #667eea;">
+                        <i class="fas fa-calendar-alt"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <h3 class="stat-number" id="today-appointments">
+                            <span class="loading-spinner"></span>
+                        </h3>
+                        <p class="stat-label">Lịch khám hôm nay</p>
                     </div>
                 </div>
             </div>
         </div>
     </div>
     
-    <div class="col-md-3 mb-3">
-        <div class="card bg-warning text-white">
+    <div class="col-lg-3 col-md-6 mb-4">
+        <div class="card stat-card card-warning">
             <div class="card-body">
                 <div class="d-flex align-items-center">
-                    <i class="fas fa-prescription-bottle fa-2x me-3"></i>
-                    <div>
-                        <h5 class="card-title mb-0" id="pending-prescriptions">-</h5>
-                        <p class="card-text">Đơn thuốc chờ</p>
+                    <div class="stat-icon" style="background: rgba(252, 182, 159, 0.1); color: #fcb69f;">
+                        <i class="fas fa-prescription-bottle"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <h3 class="stat-number" id="pending-prescriptions">
+                            <span class="loading-spinner"></span>
+                        </h3>
+                        <p class="stat-label">Đơn thuốc chờ</p>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Section -->
+<div class="row mb-5">
+    <div class="col-12 mb-3">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="section-title mb-0">Biểu đồ thống kê</h5>
+            <button class="btn btn-outline-secondary btn-sm" onclick="refreshCharts()" id="refresh-btn">
+                <i class="fas fa-sync-alt me-1"></i>
+                Làm mới
+            </button>
+        </div>
+    </div>
+    
+    <div class="col-lg-12 mb-4">
+        <div class="card chart-card">
+            <div class="card-header bg-transparent border-0 pt-4">
+                <h6 class="mb-0"><i class="fas fa-line-chart me-2"></i>Thống kê lịch hẹn cả tháng</h6>
+            </div>
+            <div class="card-body position-relative">
+                <div class="chart-loading" id="appointments-chart-loading">
+                    <div class="text-center py-5">
+                        <span class="loading-spinner me-2"></span>
+                        <span class="text-muted">Đang tải biểu đồ...</span>
+                    </div>
+                </div>
+                <canvas id="appointmentsChart" height="300" style="display: none;"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-5">
+    <div class="col-lg-6 mb-4">
+        <div class="card chart-card">
+            <div class="card-header bg-transparent border-0 pt-4">
+                <h6 class="mb-0"><i class="fas fa-pie-chart me-2"></i>Trạng thái lịch hẹn hôm nay</h6>
+            </div>
+            <div class="card-body position-relative">
+                <div class="chart-loading" id="appointment-status-chart-loading">
+                    <div class="text-center py-5">
+                        <span class="loading-spinner me-2"></span>
+                        <span class="text-muted">Đang tải...</span>
+                    </div>
+                </div>
+                <canvas id="appointmentStatusChart" height="300" style="display: none;"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-6 mb-4">
+        <div class="card chart-card">
+            <div class="card-header bg-transparent border-0 pt-4">
+                <h6 class="mb-0"><i class="fas fa-chart-pie me-2"></i>Đơn thuốc theo trạng thái</h6>
+            </div>
+            <div class="card-body position-relative">
+                <div class="chart-loading" id="prescriptions-chart-loading">
+                    <div class="text-center py-5">
+                        <span class="loading-spinner me-2"></span>
+                        <span class="text-muted">Đang tải...</span>
+                    </div>
+                </div>
+                <canvas id="prescriptionsChart" height="300" style="display: none;"></canvas>
             </div>
         </div>
     </div>
 </div>
 
 <!-- Quick Actions -->
-<div class="row mb-4">
+<div class="row mb-5">
     <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">Thao tác nhanh</h5>
+        <h5 class="section-title">Thao tác nhanh</h5>
+        <div class="row">
+            <div class="col-lg-3 col-md-6 mb-3">
+                <a href="/patients/" class="quick-action-btn">
+                    <div class="quick-action-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <h6 class="mb-0">Quản lý bệnh nhân</h6>
+                </a>
             </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-3 mb-3">
-                        <a href="/patients/" class="btn btn-outline-primary w-100 h-100">
-                            <i class="fas fa-users fa-2x d-block mb-2"></i>
-                            Quản lý bệnh nhân
-                        </a>
+            <div class="col-lg-3 col-md-6 mb-3">
+                <button class="quick-action-btn border-0 w-100" onclick="openAddPatientModal()">
+                    <div class="quick-action-icon">
+                        <i class="fas fa-user-plus"></i>
                     </div>
-                    <div class="col-md-3 mb-3">
-                        <button class="btn btn-outline-success w-100 h-100" onclick="openAddPatientModal()">
-                            <i class="fas fa-user-plus fa-2x d-block mb-2"></i>
-                            Thêm bệnh nhân mới
-                        </button>
+                    <h6 class="mb-0">Thêm bệnh nhân mới</h6>
+                </button>
+            </div>
+            <div class="col-lg-3 col-md-6 mb-3">
+                <a href="/appointments/" class="quick-action-btn">
+                    <div class="quick-action-icon">
+                        <i class="fas fa-calendar-plus"></i>
                     </div>
-                    <div class="col-md-3 mb-3">
-                        <a href="#" class="btn btn-outline-info w-100 h-100">
-                            <i class="fas fa-calendar-plus fa-2x d-block mb-2"></i>
-                            Đặt lịch khám
-                        </a>
+                    <h6 class="mb-0">Đặt lịch khám</h6>
+                </a>
+            </div>
+            <div class="col-lg-3 col-md-6 mb-3">
+                <a href="#" class="quick-action-btn" onclick="generateReport()">
+                    <div class="quick-action-icon">
+                        <i class="fas fa-chart-bar"></i>
                     </div>
-                    <div class="col-md-3 mb-3">
-                        <a href="#" class="btn btn-outline-warning w-100 h-100">
-                            <i class="fas fa-chart-bar fa-2x d-block mb-2"></i>
-                            Báo cáo thống kê
-                        </a>
-                    </div>
-                </div>
+                    <h6 class="mb-0">Báo cáo thống kê</h6>
+                </a>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Recent Patients -->
+<!-- Data Tables Section -->
 <div class="row">
-    <div class="col-md-6 mb-4">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Bệnh nhân mới gần đây</h5>
+    <div class="col-lg-8 mb-4">
+        <div class="card chart-card">
+            <div class="card-header bg-transparent border-0 pt-4 d-flex justify-content-between align-items-center">
+                <h5 class="section-title mb-0">Bệnh nhân mới gần đây</h5>
                 <a href="/patients/" class="btn btn-sm btn-outline-primary">Xem tất cả</a>
             </div>
             <div class="card-body">
                 <div class="table-responsive">
-                    <table class="table table-sm">
-                        <thead>
+                    <table class="table table-hover">
+                        <thead class="table-light">
                             <tr>
                                 <th>Mã BN</th>
                                 <th>Họ tên</th>
+                                <th>Số điện thoại</th>
                                 <th>Ngày tạo</th>
+                                <th>Trạng thái</th>
                             </tr>
                         </thead>
                         <tbody id="recent-patients-tbody">
                             <tr>
-                                <td colspan="3" class="text-center text-muted">Đang tải...</td>
+                                <td colspan="5" class="text-center text-muted py-4">
+                                    <span class="loading-spinner me-2"></span>
+                                    Đang tải dữ liệu...
+                                </td>
                             </tr>
                         </tbody>
                     </table>
@@ -163,19 +500,24 @@
         </div>
     </div>
     
-    <div class="col-md-6 mb-4">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">Hoạt động gần đây</h5>
+    <div class="col-lg-4 mb-4">
+        <div class="card chart-card">
+            <div class="card-header bg-transparent border-0 pt-4">
+                <h5 class="section-title mb-0">Hoạt động gần đây</h5>
             </div>
             <div class="card-body">
-                <div class="timeline" id="recent-activities">
-                    <div class="text-center text-muted">Đang tải...</div>
+                <div id="recent-activities">
+                    <div class="text-center text-muted py-4">
+                        <span class="loading-spinner me-2"></span>
+                        Đang tải hoạt động...
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<script src="{% load static %}{% static 'js/dashboard.js' %}"></script>
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{% static 'js/dashboard.js' %}"></script>
 {% endblock %}
