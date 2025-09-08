@@ -599,7 +599,10 @@ async function handleAddPrescription(event) {
         showAlert('Đơn thuốc đã được tạo thành công', 'success');
         
         // Close modal and refresh list
-        const modal = bootstrap.Modal.getInstance(document.getElementById('addPrescriptionModal'));
+        let modal = bootstrap.Modal.getInstance(document.getElementById('addPrescriptionModal'));
+        if (!modal) {
+            modal = bootstrap.Modal.getInstance(document.getElementById('createPrescriptionModal'));
+        }
         if (modal) modal.hide();
         
         // Reset form
