@@ -50,7 +50,14 @@ function bindDoctorEvents(){
     if (form) form.addEventListener('submit', function(e){ e.preventDefault(); currentPage=1; loadPrescriptions(); });
     
     const addForm = document.getElementById('create-prescription-form');
-    if (addForm) addForm.addEventListener('submit', handleAddPrescription);
+    if (addForm) {
+        addForm.addEventListener('submit', handleAddPrescription);
+        // Theo dõi thay đổi để enable/disable nút Kê đơn
+        addForm.addEventListener('input', updateSubmitEnabled);
+        addForm.addEventListener('change', updateSubmitEnabled);
+        // Khởi tạo trạng thái nút
+        updateSubmitEnabled();
+    }
     
     const addDrugBtn = document.getElementById('add-drug-btn');
     if (addDrugBtn) addDrugBtn.addEventListener('click', showDrugSelectionModal);
@@ -73,6 +80,8 @@ function bindDoctorEvents(){
             if (drugs.length === 0) {
                 await loadDrugs();
             }
+            // Mỗi lần mở modal: reset nút submit theo validation hiện tại
+            updateSubmitEnabled();
         });
     }
 }
@@ -599,17 +608,20 @@ async function handleAddPrescription(event) {
         showAlert('Đơn thuốc đã được tạo thành công', 'success');
         
         // Close modal and refresh list
-        let modal = bootstrap.Modal.getInstance(document.getElementById('addPrescriptionModal'));
-        if (!modal) {
-            modal = bootstrap.Modal.getInstance(document.getElementById('createPrescriptionModal'));
+        const createModalEl = document.getElementById('createPrescriptionModal');
+        if (createModalEl && window.bootstrap?.Modal) {
+            const modal = bootstrap.Modal.getOrCreateInstance(createModalEl);
+            modal.hide();
         }
-        if (modal) modal.hide();
         
         // Reset form
         event.target.reset();
         const container = document.getElementById('prescription-items-container');
         if (container) container.innerHTML = '';
         
+        // Đảm bảo nút submit trở lại disabled sau khi reset
+        updateSubmitEnabled();
+
         // Reload prescriptions
         await loadPrescriptions();
         
@@ -732,6 +744,13 @@ function addPrescriptionItem() {
     if (routeSelect) {
         routeSelect.addEventListener('change', function() { onRouteChange(this); });
     }
+    // Theo dõi thay đổi để cập nhật state nút submit
+    itemRow.querySelectorAll('select, input, textarea').forEach(el => {
+        el.addEventListener('input', updateSubmitEnabled);
+        el.addEventListener('change', updateSubmitEnabled);
+    });
+    // Cập nhật ngay sau khi thêm dòng
+    updateSubmitEnabled();
 }
 function onRouteChange(selectEl) {
     try {
@@ -754,6 +773,38 @@ function onRouteChange(selectEl) {
 }
 
 /**
+ * Enable/Disable nút "Kê đơn" dựa trên các trường bắt buộc
+ */
+function updateSubmitEnabled() {
+    const form = document.getElementById('create-prescription-form');
+    if (!form) return;
+
+    // Kiểm tra bắt buộc cấp form
+    const patient = form.querySelector('#patient-select')?.value;
+    const diagnosis = form.querySelector('#diagnosis')?.value?.trim();
+
+    // Kiểm tra ít nhất 1 dòng thuốc với đủ trường
+    const rows = form.querySelectorAll('.prescription-item-row');
+    let hasValidItem = false;
+    rows.forEach(row => {
+        const drug = row.querySelector('[name="drug"]')?.value;
+        const quantity = row.querySelector('[name="quantity"]')?.value;
+        const frequency = row.querySelector('[name="frequency"]')?.value;
+        const route = row.querySelector('[name="route"]')?.value;
+        const instructions = row.querySelector('[name="instructions"]')?.value?.trim();
+        if (drug && Number(quantity) > 0 && frequency && route && instructions) {
+            hasValidItem = true;
+        }
+    });
+
+    const submitBtn = form.querySelector('button[type="submit"]');
+    if (submitBtn) {
+        const enabled = Boolean(patient && diagnosis && hasValidItem);
+        submitBtn.disabled = !enabled;
+    }
+}
+
+/**
  * Remove prescription item row
  */
 function removePrescriptionItem(button) {
@@ -761,6 +812,7 @@ function removePrescriptionItem(button) {
     if (row) {
         row.remove();
     }
+    updateSubmitEnabled();
 }
 
 /**
