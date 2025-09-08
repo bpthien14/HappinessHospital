@@ -142,7 +142,8 @@ class PrescriptionSerializer(serializers.ModelSerializer):
     # Status and validity
     is_valid = serializers.ReadOnlyField()
     days_until_expiry = serializers.ReadOnlyField()
-    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    # Hiển thị trạng thái dựa trên dispensing status thay vì status của đơn
+    status_display = serializers.SerializerMethodField('get_status_display_value')
     prescription_type_display = serializers.CharField(source='get_prescription_type_display', read_only=True)
     dispensing_status = serializers.SerializerMethodField()
     dispensing_status_display = serializers.SerializerMethodField()
@@ -176,6 +177,10 @@ class PrescriptionSerializer(serializers.ModelSerializer):
     
     def get_items_count(self, obj):
         return obj.items.count()
+    
+    def get_status_display_value(self, obj):
+        """Dùng nhãn của dispensing status làm status_display cho UI"""
+        return self.get_dispensing_status_display(obj)
     
     def get_patient(self, obj):
         """Return full patient information"""

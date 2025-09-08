@@ -370,22 +370,41 @@ class Prescription(models.Model):
         """Lấy trạng thái dispensing chung của đơn thuốc"""
         dispensing_records = self.dispensing_records.all()
         if not dispensing_records.exists():
+            # Không có bản ghi dispensing: suy luận theo items và status của đơn
+            # Ưu tiên trạng thái hủy
+            if self.status == 'CANCELLED':
+                return 'CANCELLED'
+
+            items = list(self.items.all())
+            if not items:
+                # Không có items: coi như chưa thanh toán
+                return 'UNPAID'
+
+            total = len(items)
+            fully = sum(1 for it in items if it.is_fully_dispensed)
+            partial = sum(1 for it in items if 0 < it.quantity_dispensed < it.quantity)
+
+            if fully == total and total > 0:
+                return 'DISPENSED'
+            if fully > 0 or partial > 0:
+                # Đã có cấp một phần nhưng chưa đầy đủ
+                return 'PENDING'
+            # Chưa cấp gì: coi như chưa thanh toán
             return 'UNPAID'
-        
+
         statuses = set(dispensing_records.values_list('status', flat=True))
-        
+
+        if 'CANCELLED' in statuses:
+            return 'CANCELLED'
         if 'UNPAID' in statuses:
             return 'UNPAID'
-        elif all(status == 'DISPENSED' for status in statuses):
+        if all(status == 'DISPENSED' for status in statuses):
             return 'DISPENSED'
-        elif 'PREPARED' in statuses:
+        if 'PREPARED' in statuses:
             return 'PREPARED'
-        elif 'PENDING' in statuses:
+        if 'PENDING' in statuses:
             return 'PENDING'
-        elif 'CANCELLED' in statuses:
-            return 'CANCELLED'
-        else:
-            return 'PENDING'
+        return 'PENDING'
 
 class PrescriptionItem(models.Model):
     """Chi tiết đơn thuốc - từng loại thuốc trong đơn"""
